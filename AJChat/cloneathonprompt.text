@@ -1,0 +1,56 @@
+Develop a full-stack T3 Chat clone application, fully compliant with the technical requirements and spirit of the Cloneathon competition. The application should prioritize a fast, responsive user experience (UX) and a robust, scalable architecture.
+
+The application must be built using the following core technologies:
+Frontend: Vite, TypeScript, React, React Router
+Backend/Database: Convex (leveraging its real-time capabilities, actions, mutations, and queries)
+Authentication: Clerk (for all user authentication and authorization)
+Key features to be implemented include:
+
+Comprehensive Chat Management (CRUD):
+Create: Users can initiate new chat threads.
+Read: Users can view existing chat threads and their associated messages. Users must be able to scroll through and select past chats.
+Update: Users can edit their own messages within a chat.
+Delete: Users can delete their own messages or entire chat threads.
+
+Real-Time Chat Functionality:
+Instantaneous message delivery and display within chat threads.
+Live updates for the chat list (e.g., new chats appearing, chat titles updating).
+AI Processing Indicator: Implement a real-time 'thinking' or 'generating' indicator (e.g., "AI is typing...") while the AI model is processing a response.
+
+Advanced AI Model Interaction Controls & Administration:
+Configurable Model Selection: Users must be able to choose from a list of available AI models. This list must be dynamically configurable, allowing Admins to add new model names, associated API endpoints, and their respective API keys. AI model API keys must be securely stored as server-side environment variables and not directly within the Convex database.
+Model Depth Control: For models that support it, provide a 'depth mode' selection (e.g., "Low," "Medium," "High"). This setting will be passed as a string parameter to the AI model's API. If a model doesn't support this, the option should be unavailable.
+Document Attachment/Context (Conditional): Implement functionality for users to attach documents or files to their prompts, which will then be utilized by the selected AI model for context-aware responses. This feature is enabled via a toggleable setting for each model within the Convex database, configurable by Admins. Accepted file types (e.g., PDF, TXT, MD) must be specified, and the maximum size limit for attached documents should be a globally configurable setting managed by Admins. A mock size limit should be implemented initially.
+AI Rate Limit Mocking: Implement a mock rate limit for AI model API usage. This mock limit will be configurable and will be updated post-investigation into actual API limits.
+
+User Management & Authorization (via Clerk):
+User States: Implement distinct user states: authenticated, unauthenticated, paidUser, and admin.
+Upon successful authentication via Clerk, a corresponding user document must be created or updated in the Convex database.
+Restricted Models: A subset of AI models must be exclusively accessible to paidUser and admin user roles.
+Account Settings: Authenticated users must be able to access and manage their account settings.
+
+User Interface (UI) & User Experience (UX):
+Support for a dark mode theme, allowing users to toggle between light and dark modes.
+Code Block Rendering: Ensure proper and visually distinct rendering of code blocks within chat messages (e.g., using Markdown or similar syntax highlighting).
+Chat Export: Users must be able to generate and download a PDF of a full chat conversation for easy sharing. The PDF will include chat text content and properly formatted code blocks. This functionality will be handled server-side.
+Robust Error Handling, Logging & Security:
+All application errors must be caught and logged systematically using Convex's logging system, categorized as error logs.
+Comprehensive Logging: Implement logging for every significant action, categorized into:
+user_action logs (e.g., creating chat, sending message, changing settings).
+admin_action logs (e.g., adding/modifying AI models, changing global config).
+All user input must be rigorously sanitized and validated against the selected AI model's API restrictions (e.g., maximum token length, valid characters, file type limits).
+Security: Implement robust protection mechanisms against both prompt injection and Cross-Site Scripting (XSS) in all user-generated content and AI interactions.
+
+Deployment & Scalability:
+The frontend will be deployed on Vercel.
+The application should be architected to support as large a user base as can be freely supported by the chosen technologies.
+
+Convex Data Modeling:
+The application's data layer in Convex must be designed to efficiently manage the following collections and their relationships. A thoughtfully designed schema is crucial:
+users: Stores Convex-specific user data, linked to Clerk IDs (e.g., clerkUserId: string, role: 'authenticated' | 'paidUser' | 'admin', settings: { darkMode: boolean, ... }).
+chats: Represents individual conversation threads (e.g., userId: Id<'users'>, title: string, createdAt: number, lastMessageAt: number, modelUsed: Id<'aiModels'>).
+messages: Contains individual messages within chats (e.g., chatId: Id<'chats'>, userId: Id<'users'> | null (for AI messages), content: string, type: 'user' | 'ai', createdAt: number, isEdited: boolean).
+aiModels: Stores configuration for available AI models (e.g., name: string, endpoint: string, supportedDepths: string[] (e.g., ['Low', 'Medium', 'High']), supportsDocumentIngestion: boolean, isRestricted: boolean). Note: API keys for models will be managed as server-side environment variables, not directly in this collection.
+documents: Stores metadata for attached files (e.g., messageId: Id<'messages'>, fileName: string, fileType: string, storageId: string (Convex file storage ID)).
+logs: For storing the error, user_action, and admin_action logs (e.g., type: 'error' | 'user_action' | 'admin_action', timestamp: number, userId: Id<'users'> | null, details: any).
+config: A single document or collection for global, admin-configurable settings (e.g., maxDocumentSize: number, mockAiRateLimit: number).
