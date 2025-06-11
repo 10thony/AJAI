@@ -1,8 +1,95 @@
 #root {
-  max-width: 1280px;
-  margin: 0 auto;
+  width: 100%;
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+}
+
+.app-container {
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 2rem;
+  background-color: #1a1a1a;
+  border-bottom: 1px solid #333;
+}
+
+.app-header h1 {
+  margin: 0;
+  font-size: 1.5rem;
+  color: #fff;
+}
+
+.auth-buttons {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+.sign-in-button {
+  padding: 0.5rem 1rem;
+  background-color: #646cff;
+  color: white;
+  border-radius: 4px;
+  text-decoration: none;
+  transition: background-color 0.2s;
+}
+
+.sign-in-button:hover {
+  background-color: #535bf2;
+}
+
+main {
+  flex: 1;
   padding: 2rem;
-  text-align: center;
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.chat-container {
+  background-color: #1a1a1a;
+  border-radius: 8px;
+  padding: 2rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.chat-container h2 {
+  margin-top: 0;
+  color: #fff;
+}
+
+/* Clerk component customization */
+.cl-rootBox {
+  margin: 0 auto;
+}
+
+.cl-card {
+  background-color: #1a1a1a !important;
+  border: 1px solid #333 !important;
+}
+
+.cl-formButtonPrimary {
+  background-color: #646cff !important;
+}
+
+.cl-formButtonPrimary:hover {
+  background-color: #535bf2 !important;
+}
+
+.cl-footerActionLink {
+  color: #646cff !important;
+}
+
+.cl-footerActionLink:hover {
+  color: #535bf2 !important;
 }
 
 .logo {
