@@ -1,0 +1,325 @@
+import { useQuery, useMutation } from "convex/react";
+import { api } from "../../convex/_generated/api";
+import { useState } from "react";
+
+export function AdminPage() {
+  const aiModels = useQuery(api.aiModels.listAll) || [];
+  const createModel = useMutation(api.aiModels.create);
+  const updateModel = useMutation(api.aiModels.update);
+  const removeModel = useMutation(api.aiModels.remove);
+  
+  const [isCreating, setIsCreating] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [formData, setFormData] = useState({
+    name: "",
+    provider: "",
+    modelId: "",
+    apiKeyEnvVar: "",
+    description: "",
+    maxTokens: "",
+    temperature: "",
+  });
+
+  const resetForm = () => {
+    setFormData({
+      name: "",
+      provider: "",
+      modelId: "",
+      apiKeyEnvVar: "",
+      description: "",
+      maxTokens: "",
+      temperature: "",
+    });
+    setEditingId(null);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsCreating(true);
+
+    try {
+      const data = {
+        name: formData.name,
+        provider: formData.provider,
+        modelId: formData.modelId,
+        apiKeyEnvVar: formData.apiKeyEnvVar,
+        description: formData.description || undefined,
+        maxTokens: formData.maxTokens ? parseInt(formData.maxTokens) : undefined,
+        temperature: formData.temperature ? parseFloat(formData.temperature) : undefined,
+      };
+
+      if (editingId) {
+        await updateModel({ id: editingId as any, ...data });
+      } else {
+        await createModel(data);
+      }
+      
+      resetForm();
+    } catch (error) {
+      console.error("Failed to save model:", error);
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
+  const handleEdit = (model: any) => {
+    setFormData({
+      name: model.name,
+      provider: model.provider,
+      modelId: model.modelId,
+      apiKeyEnvVar: model.apiKeyEnvVar,
+      description: model.description || "",
+      maxTokens: model.maxTokens?.toString() || "",
+      temperature: model.temperature?.toString() || "",
+    });
+    setEditingId(model._id);
+  };
+
+  const handleToggleActive = async (model: any) => {
+    try {
+      await updateModel({
+        id: model._id,
+        isActive: !model.isActive,
+      });
+    } catch (error) {
+      console.error("Failed to toggle model:", error);
+    }
+  };
+
+  const handleDelete = async (modelId: string) => {
+    if (!confirm("Are you sure you want to delete this model?")) return;
+    
+    try {
+      await removeModel({ id: modelId as any });
+    } catch (error) {
+      console.error("Failed to delete model:", error);
+    }
+  };
+
+  return (
+    <div className="flex-1 p-6 overflow-y-auto">
+      <div className="max-w-6xl mx-auto">
+        <h1 className="text-2xl font-bold text-gray-900 mb-6">Admin Dashboard</h1>
+
+        <div className="grid lg:grid-cols-2 gap-8">
+          {/* Add/Edit Model Form */}
+          <div className="bg-white rounded-lg shadow-sm border p-6">
+            <h2 className="text-lg font-semibold mb-4">
+              {editingId ? "Edit Model" : "Add New AI Model"}
+            </h2>
+            
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Model Name
+                </label>
+                <input
+                  type="text"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  required
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="e.g., GPT-4"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Provider
+                </label>
+                <select
+                  value={formData.provider}
+                  onChange={(e) => setFormData({ ...formData, provider: e.target.value })}
+                  required
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="">Select Provider</option>
+                  <option value="openai">OpenAI</option>
+                  <option value="anthropic">Anthropic</option>
+                  <option value="google">Google</option>
+                  <option value="cohere">Cohere</option>
+                  <option value="huggingface">Hugging Face</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Model ID
+                </label>
+                <input
+                  type="text"
+                  value={formData.modelId}
+                  onChange={(e) => setFormData({ ...formData, modelId: e.target.value })}
+                  required
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="e.g., gpt-4"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  API Key Environment Variable
+                </label>
+                <input
+                  type="text"
+                  value={formData.apiKeyEnvVar}
+                  onChange={(e) => setFormData({ ...formData, apiKeyEnvVar: e.target.value })}
+                  required
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="e.g., OPENAI_API_KEY"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Description (Optional)
+                </label>
+                <textarea
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  rows={2}
+                  placeholder="Brief description of the model"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Max Tokens (Optional)
+                  </label>
+                  <input
+                    type="number"
+                    value={formData.maxTokens}
+                    onChange={(e) => setFormData({ ...formData, maxTokens: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="4096"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Temperature (Optional)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    max="2"
+                    value={formData.temperature}
+                    onChange={(e) => setFormData({ ...formData, temperature: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="0.7"
+                  />
+                </div>
+              </div>
+
+              <div className="flex space-x-3">
+                <button
+                  type="submit"
+                  disabled={isCreating}
+                  className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50"
+                >
+                  {isCreating ? "Saving..." : editingId ? "Update Model" : "Add Model"}
+                </button>
+                {editingId && (
+                  <button
+                    type="button"
+                    onClick={resetForm}
+                    className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50"
+                  >
+                    Cancel
+                  </button>
+                )}
+              </div>
+            </form>
+          </div>
+
+          {/* Models List */}
+          <div className="bg-white rounded-lg shadow-sm border p-6">
+            <h2 className="text-lg font-semibold mb-4">Configured Models</h2>
+            
+            <div className="space-y-4">
+              {aiModels.map((model) => (
+                <div
+                  key={model._id}
+                  className="border border-gray-200 rounded-lg p-4"
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center space-x-2">
+                        <h3 className="font-medium text-gray-900">{model.name}</h3>
+                        <span
+                          className={`px-2 py-1 text-xs rounded-full ${
+                            model.isActive
+                              ? "bg-green-100 text-green-800"
+                              : "bg-gray-100 text-gray-800"
+                          }`}
+                        >
+                          {model.isActive ? "Active" : "Inactive"}
+                        </span>
+                      </div>
+                      <p className="text-sm text-gray-600 mt-1">
+                        {model.provider} • {model.modelId}
+                      </p>
+                      {model.description && (
+                        <p className="text-sm text-gray-500 mt-1">{model.description}</p>
+                      )}
+                      <p className="text-xs text-gray-400 mt-1">
+                        API Key: {model.apiKeyEnvVar}
+                      </p>
+                    </div>
+                    
+                    <div className="flex items-center space-x-2 ml-4">
+                      <button
+                        onClick={() => handleToggleActive(model)}
+                        className={`px-3 py-1 text-xs rounded ${
+                          model.isActive
+                            ? "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                            : "bg-green-100 text-green-700 hover:bg-green-200"
+                        }`}
+                      >
+                        {model.isActive ? "Disable" : "Enable"}
+                      </button>
+                      <button
+                        onClick={() => handleEdit(model)}
+                        className="px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => handleDelete(model._id)}
+                        className="px-3 py-1 text-xs bg-red-100 text-red-700 rounded hover:bg-red-200"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              
+              {aiModels.length === 0 && (
+                <p className="text-gray-500 text-center py-8">
+                  No AI models configured yet. Add your first model above.
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Instructions */}
+        <div className="mt-8 bg-blue-50 border border-blue-200 rounded-lg p-6">
+          <h3 className="text-lg font-semibold text-blue-900 mb-2">Setup Instructions</h3>
+          <div className="text-blue-800 space-y-2">
+            <p>1. Add AI models using the form above</p>
+            <p>2. Set up environment variables for API keys in your Convex deployment</p>
+            <p>3. Users will be able to select from active models when creating chats</p>
+            <p className="text-sm text-blue-600 mt-4">
+              <strong>Note:</strong> Currently using mock responses. Configure real API keys to enable actual AI responses.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
