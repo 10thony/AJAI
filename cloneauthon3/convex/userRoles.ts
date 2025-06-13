@@ -47,9 +47,16 @@ export const setUserRole = mutation({
       .first();
     
     if (existingRole) {
-      await ctx.db.patch(existingRole._id, { role: args.role });
+      await ctx.db.patch(existingRole._id, { 
+        role: args.role,
+        updatedAt: Date.now()
+      });
     } else {
-      await ctx.db.insert("userRoles", args);
+      await ctx.db.insert("userRoles", {
+        ...args,
+        createdAt: Date.now(),
+        updatedAt: Date.now()
+      });
     }
   },
 });
@@ -71,7 +78,11 @@ export const makeCurrentUserAdmin = mutation({
     if (existingRole) {
       await ctx.db.patch(existingRole._id, { role: "admin" });
     } else {
-      await ctx.db.insert("userRoles", { userId, role: "admin" });
+      await ctx.db.insert("userRoles", {
+        userId, role: "admin",
+        createdAt: 0,
+        updatedAt: 0
+      });
     }
   },
 });

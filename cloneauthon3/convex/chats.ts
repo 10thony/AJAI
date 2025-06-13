@@ -71,6 +71,8 @@ export const create = mutation({
       title: args.title,
       modelId: args.modelId,
       isArchived: false,
+      createdAt: 0,
+      updatedAt: 0
     });
   },
 });

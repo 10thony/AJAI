@@ -53,7 +53,10 @@ export default function Chat() {
       createdAt: Date.now(),
     };
     setMessages((m) => [...m, userMsg]);
-    await addMessage({ chatId: "skip" as Id<"chats">, content: userMsg.content });
+    await addMessage({
+      chatId: "skip" as Id<"chats">, content: userMsg.content,
+      apiKey: ""
+    });
     setInput("");
     // placeholder for assistant
     const assistantPlaceholder: LocalMessage = {
@@ -115,7 +118,10 @@ export default function Chat() {
       }
     }
     // persist final assistant message
-    await addMessage({ chatId: "skip" as Id<"chats">, content: assistantText });
+    await addMessage({
+      chatId: "skip" as Id<"chats">, content: assistantText,
+      apiKey: ""
+    });
     setStreaming(false);
   }
 

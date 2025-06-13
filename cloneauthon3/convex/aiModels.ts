@@ -58,6 +58,8 @@ export const create = mutation({
     return await ctx.db.insert("aiModels", {
       ...args,
       isActive: true,
+      createdAt: 0,
+      updatedAt: 0
     });
   },
 });
@@ -117,9 +119,12 @@ export const seedModels = mutation({
         isActive: true,
       },
     ];
-
     for (const model of models) {
-      await ctx.db.insert("aiModels", model);
+      await ctx.db.insert("aiModels", {
+        ...model,
+        createdAt: Date.now(),
+        updatedAt: Date.now()
+      });
     }
   },
 });

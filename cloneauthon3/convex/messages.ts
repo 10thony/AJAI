@@ -52,6 +52,8 @@ export const send = mutation({
       content: args.content,
       role: "user",
       userId,
+      createdAt: 0,
+      updatedAt: 0
     });
     
     // Create initial AI message for streaming
@@ -59,6 +61,8 @@ export const send = mutation({
       chatId: args.chatId,
       content: "",
       role: "assistant",
+      createdAt: 0,
+      updatedAt: 0
     });
     
     // Schedule AI response with API key
@@ -125,6 +129,9 @@ export const generateAIResponse = internalAction({
           break;
         case "anthropic":
           response = await callAnthropic(args.apiKey, chat.model.modelId, formattedMessages);
+          break;
+        case "huggingface":
+          response = await callHuggingFace(args.apiKey, chat.model.modelId, formattedMessages);
           break;
         default:
           throw new Error(`Unsupported provider: ${chat.model.provider}. Please contact support.`);
@@ -250,4 +257,31 @@ async function* callAnthropic(apiKey: string, modelId: string, messages: any[]) 
       }
     }
   }
+}
+
+// Call Hugging Face API
+async function* callHuggingFace(apiKey: string, modelId: string, messages: { role: string; content: string }[]) {
+  const response = await fetch(`https://api-inference.huggingface.co/models/${modelId}`, {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      inputs: messages.map(m => m.content).join("\n"),
+      parameters: {
+        max_new_tokens: 250,
+        temperature: 0.7,
+        return_full_text: false,
+      },
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(`Hugging Face API error: ${response.status} - ${JSON.stringify(error)}`);
+  }
+
+  const data = await response.json();
+  yield data[0].generated_text;
 }

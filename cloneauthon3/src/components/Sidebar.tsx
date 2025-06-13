@@ -1,15 +1,19 @@
 import { useQuery, useMutation } from "convex/react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useNavigate } from "react-router-dom";
 import { api } from "../../convex/_generated/api";
 import { useState } from "react";
+import { Id } from "../../convex/_generated/dataModel";
 
 export function Sidebar() {
   const chats = useQuery(api.chats.list) || [];
   const aiModels = useQuery(api.aiModels.listActive) || [];
   const createChat = useMutation(api.chats.create);
+  const archiveChat = useMutation(api.chats.archive);
   const { chatId } = useParams();
+  const navigate = useNavigate();
   
   const [isCreating, setIsCreating] = useState(false);
+  const [deletingChatId, setDeletingChatId] = useState<Id<"chats"> | null>(null);
 
   const handleNewChat = async () => {
     if (aiModels.length === 0) return;
@@ -17,14 +21,33 @@ export function Sidebar() {
     setIsCreating(true);
     try {
       const defaultModel = aiModels[0];
-      await createChat({
+      const newChatId = await createChat({
         title: "New Chat",
         modelId: defaultModel._id,
       });
+      navigate(`/chat/${newChatId}`);
     } catch (error) {
       console.error("Failed to create chat:", error);
     } finally {
       setIsCreating(false);
+    }
+  };
+
+  const handleDeleteChat = async (chatId: Id<"chats">, e: React.MouseEvent) => {
+    e.preventDefault(); // Prevent navigation when clicking delete
+    e.stopPropagation(); // Prevent event bubbling
+    
+    setDeletingChatId(chatId);
+    try {
+      await archiveChat({ id: chatId });
+      // If we're currently viewing the deleted chat, navigate to home
+      if (chatId === chatId) {
+        navigate('/');
+      }
+    } catch (error) {
+      console.error("Failed to delete chat:", error);
+    } finally {
+      setDeletingChatId(null);
     }
   };
 
@@ -50,7 +73,7 @@ export function Sidebar() {
               <Link
                 key={chat._id}
                 to={`/chat/${chat._id}`}
-                className={`block p-3 rounded-md text-sm ${
+                className={`block p-3 rounded-md text-sm group relative ${
                   chatId === chat._id
                     ? "bg-blue-100 text-blue-700"
                     : "text-gray-700 hover:bg-gray-100"
@@ -60,6 +83,13 @@ export function Sidebar() {
                 <div className="text-xs text-gray-500 mt-1">
                   {chat.model?.name || "Unknown Model"}
                 </div>
+                <button
+                  onClick={(e) => handleDeleteChat(chat._id, e)}
+                  disabled={deletingChatId === chat._id}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500 disabled:opacity-50"
+                >
+                  {deletingChatId === chat._id ? "Deleting..." : "×"}
+                </button>
               </Link>
             ))}
             {chats.length === 0 && (

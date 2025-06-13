@@ -13,6 +13,8 @@ const applicationTables = {
     description: v.optional(v.string()),
     maxTokens: v.optional(v.number()),
     temperature: v.optional(v.number()),
+    createdAt: v.number(), // Track when model was added
+    updatedAt: v.number(), // Track when model was last updated
   }).index("by_provider", ["provider"])
     .index("by_active", ["isActive"]),
 
@@ -20,6 +22,8 @@ const applicationTables = {
   userRoles: defineTable({
     userId: v.id("users"),
     role: v.union(v.literal("admin"), v.literal("user")),
+    createdAt: v.number(), // Track when role was assigned
+    updatedAt: v.number(), // Track when role was last updated
   }).index("by_user", ["userId"])
     .index("by_role", ["role"]),
 
@@ -29,8 +33,12 @@ const applicationTables = {
     title: v.string(),
     modelId: v.id("aiModels"),
     isArchived: v.optional(v.boolean()),
+    createdAt: v.number(), // Track when chat was created
+    updatedAt: v.number(), // Track when chat was last updated
+    lastMessageAt: v.optional(v.number()), // Track when last message was sent
   }).index("by_user", ["userId"])
-    .index("by_user_archived", ["userId", "isArchived"]),
+    .index("by_user_archived", ["userId", "isArchived"])
+    .index("by_last_message", ["lastMessageAt"]), // For sorting by recent activity
 
   // Messages within chats
   messages: defineTable({
@@ -38,7 +46,12 @@ const applicationTables = {
     content: v.string(),
     role: v.union(v.literal("user"), v.literal("assistant")),
     userId: v.optional(v.id("users")), // null for AI messages
-  }).index("by_chat", ["chatId"]),
+    createdAt: v.number(), // Track when message was created
+    updatedAt: v.number(), // Track when message was last updated
+    isStreaming: v.optional(v.boolean()), // Track if message is still being streamed
+    error: v.optional(v.string()), // Store any error messages
+  }).index("by_chat", ["chatId"])
+    .index("by_creation", ["createdAt"]), // For sorting messages chronologically
 };
 
 export default defineSchema({

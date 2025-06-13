@@ -53,8 +53,12 @@ export function ChatPage() {
 
   if (chat === undefined || messages === undefined) {
     return (
-      <div className="flex-1 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      <div className="flex-1 flex flex-col items-center justify-center space-y-4">
+        <div className="relative">
+          <div className="w-12 h-12 border-4 border-blue-200 rounded-full"></div>
+          <div className="w-12 h-12 border-4 border-blue-600 rounded-full animate-spin absolute top-0 left-0 border-t-transparent"></div>
+        </div>
+        <p className="text-gray-600">Loading chat...</p>
       </div>
     );
   }
@@ -139,9 +143,13 @@ export function ChatPage() {
               >
                 <p className="text-sm whitespace-pre-wrap">
                   {message.content || (message.role === "assistant" && isSending ? (
-                    <span className="inline-flex items-center">
-                      <span className="animate-pulse">AI is thinking</span>
-                      <span className="ml-1">...</span>
+                    <span className="inline-flex items-center space-x-1">
+                      <span>AI is thinking</span>
+                      <span className="flex space-x-1">
+                        <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
+                        <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
+                        <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
+                      </span>
                     </span>
                   ) : null)}
                 </p>
