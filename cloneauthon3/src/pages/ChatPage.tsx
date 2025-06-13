@@ -5,6 +5,8 @@ import { useState, useRef, useEffect } from "react";
 import { Id } from "../../convex/_generated/dataModel";
 import Anthropic from "@anthropic-ai/sdk";
 import { Settings } from "lucide-react";
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 
 type Message = {
   _id: Id<"messages">;
@@ -31,6 +33,35 @@ type GroupedModels = {
     description?: string;
   }[];
 };
+
+function formatMessageContent(content: string) {
+  // Split content by code blocks
+  const parts = content.split(/(```[\s\S]*?```)/g);
+  
+  return parts.map((part, index) => {
+    if (part.startsWith('```') && part.endsWith('```')) {
+      // Extract language and code
+      const [lang, ...codeParts] = part.slice(3, -3).split('\n');
+      const code = codeParts.join('\n');
+      
+      return (
+        <SyntaxHighlighter
+          key={index}
+          language={lang || 'text'}
+          style={vscDarkPlus}
+          customStyle={{
+            margin: '0.5em 0',
+            borderRadius: '0.375rem',
+            fontSize: '0.875rem',
+          }}
+        >
+          {code}
+        </SyntaxHighlighter>
+      );
+    }
+    return <span key={index}>{part}</span>;
+  });
+}
 
 export function ChatPage() {
   const { chatId } = useParams<{ chatId: string }>();
@@ -289,7 +320,9 @@ export function ChatPage() {
                 }`}
               >
                 <p className="text-sm whitespace-pre-wrap">
-                  {message.content || (message.role === "assistant" && isSending ? (
+                  {message.content ? (
+                    formatMessageContent(message.content)
+                  ) : (message.role === "assistant" && isSending ? (
                     <span className="inline-flex items-center space-x-1">
                       <span>AI is thinking</span>
                       <span className="flex space-x-1">
