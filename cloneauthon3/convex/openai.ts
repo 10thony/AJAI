@@ -7,7 +7,7 @@ export const chatCompletion = mutation({
     prompt: v.string(),
     model: v.optional(v.string()), // Make model optional with a default value
   },
-  handler: async (ctx, { prompt, model = "gpt-3.5-turbo" }) => {
+  handler: async (ctx, { prompt, model = "gpt-o3-mini" }) => {
     // 1. Get your API key from environment variables
     const openAiApiKey = process.env.OPENAI_API_KEY;
 
