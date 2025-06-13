@@ -9,8 +9,6 @@ const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY!,
 });
 
-
-
 // Initialize OpenAI client
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY!,
@@ -54,7 +52,7 @@ export const sendOpenAIMessage = action({
   handler: async (ctx, args) => {
     try {
       const completion = await openai.chat.completions.create({
-        model: "gpt-4",
+        model: "o3-mini-2025-01-31",
         messages: [
           {
             role: "user",
