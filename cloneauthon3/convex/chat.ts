@@ -1,10 +1,39 @@
-import { action, internalQuery } from "./_generated/server";
+import { action, internalQuery, query, internalAction } from "./_generated/server";
 import { v } from "convex/values";
 import Anthropic from "@anthropic-ai/sdk";
 import OpenAI from "openai";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { internal, api } from "./_generated/api";
 import { Doc } from "./_generated/dataModel";
+
+// Available models for each provider
+const OPENAI_MODELS = {
+  "gpt-4-turbo-preview": "GPT-4 Turbo (Latest)",
+  "gpt-4": "GPT-4",
+  "gpt-3.5-turbo": "GPT-3.5 Turbo",
+  "gpt-3.5-turbo-16k": "GPT-3.5 Turbo 16K",
+} as const;
+
+const ANTHROPIC_MODELS = {
+  "claude-3-opus-20240229": "Claude 3 Opus",
+  "claude-3-sonnet-20240229": "Claude 3 Sonnet",
+  "claude-3-haiku-20240307": "Claude 3 Haiku",
+  "claude-2.1": "Claude 2.1",
+} as const;
+
+const GOOGLE_MODELS = {
+  "gemini-pro": "Gemini Pro",
+  "gemini-pro-vision": "Gemini Pro Vision",
+  "gemini-1.5-pro": "Gemini 1.5 Pro",
+  "gemini-1.5-pro-vision": "Gemini 1.5 Pro Vision",
+} as const;
+
+const HUGGINGFACE_MODELS = {
+  "mistralai/Mistral-7B-Instruct-v0.2": "Mistral 7B Instruct",
+  "meta-llama/Llama-2-70b-chat-hf": "Llama 2 70B Chat",
+  "google/flan-t5-xxl": "FLAN-T5 XXL",
+  "bigscience/bloom": "BLOOM",
+} as const;
 
 // Initialize Anthropic client
 const anthropic = new Anthropic({
@@ -176,5 +205,145 @@ export const sendMessage = action({
       console.error("Error in chat submission:", error);
       throw new Error(error.message || "An unexpected error occurred.");
     }
+  },
+});
+
+// Fetch available models from OpenAI
+const fetchOpenAIModels = async (apiKey: string) => {
+  const response = await fetch("https://api.openai.com/v1/models", {
+    headers: {
+      "Authorization": `Bearer ${apiKey}`,
+    },
+  });
+  
+  if (!response.ok) {
+    throw new Error(`OpenAI API error: ${response.status}`);
+  }
+  
+  const data = await response.json();
+  const models: Record<string, string> = {};
+  
+  for (const model of data.data) {
+    if (model.id.startsWith("gpt-")) {
+      models[model.id] = model.id;
+    }
+  }
+  
+  return models;
+};
+
+// Fetch available models from Anthropic
+const fetchAnthropicModels = async (apiKey: string) => {
+  const response = await fetch("https://api.anthropic.com/v1/models", {
+    headers: {
+      "x-api-key": apiKey,
+    },
+  });
+  
+  if (!response.ok) {
+    throw new Error(`Anthropic API error: ${response.status}`);
+  }
+  
+  const data = await response.json();
+  const models: Record<string, string> = {};
+  
+  for (const model of data.models) {
+    if (model.id.startsWith("claude-")) {
+      models[model.id] = model.id;
+    }
+  }
+  
+  return models;
+};
+
+// Fetch available models from Google AI
+const fetchGoogleModels = async (apiKey: string) => {
+  const response = await fetch("https://generativelanguage.googleapis.com/v1beta/models", {
+    headers: {
+      "x-goog-api-key": apiKey,
+    },
+  });
+  
+  if (!response.ok) {
+    throw new Error(`Google AI API error: ${response.status}`);
+  }
+  
+  const data = await response.json();
+  const models: Record<string, string> = {};
+  
+  for (const model of data.models) {
+    if (model.name.startsWith("models/gemini-")) {
+      const modelId = model.name.replace("models/", "");
+      models[modelId] = modelId;
+    }
+  }
+  
+  return models;
+};
+
+// Action to fetch models from all providers
+export const fetchAvailableModels = internalAction({
+  args: {
+    openaiKey: v.string(),
+    anthropicKey: v.string(),
+    googleKey: v.string(),
+  },
+  returns: v.object({
+    openai: v.record(v.string(), v.string()),
+    anthropic: v.record(v.string(), v.string()),
+    google: v.record(v.string(), v.string()),
+    huggingface: v.record(v.string(), v.string()),
+  }),
+  handler: async (ctx, args) => {
+    try {
+      const [openaiModels, anthropicModels, googleModels] = await Promise.all([
+        fetchOpenAIModels(args.openaiKey),
+        fetchAnthropicModels(args.anthropicKey),
+        fetchGoogleModels(args.googleKey),
+      ]);
+
+      return {
+        openai: openaiModels,
+        anthropic: anthropicModels,
+        google: googleModels,
+        huggingface: HUGGINGFACE_MODELS, // Keep this static for now as Hugging Face requires different auth
+      };
+    } catch (error: any) {
+      console.error("Error fetching models:", error);
+      throw new Error(`Failed to fetch models: ${error.message}`);
+    }
+  },
+});
+
+// Update the getAvailableModels to be an action
+export const getAvailableModels = action({
+  args: {},
+  returns: v.object({
+    openai: v.record(v.string(), v.string()),
+    anthropic: v.record(v.string(), v.string()),
+    google: v.record(v.string(), v.string()),
+    huggingface: v.record(v.string(), v.string()),
+  }),
+  handler: async (ctx): Promise<{
+    openai: Record<string, string>;
+    anthropic: Record<string, string>;
+    google: Record<string, string>;
+    huggingface: Record<string, string>;
+  }> => {
+    // Get API keys from environment variables
+    const openaiKey = process.env.OPENAI_API_KEY;
+    const anthropicKey = process.env.ANTHROPIC_API_KEY;
+    const googleKey = process.env.GOOGLE_AI_API_KEY;
+
+    if (!openaiKey || !anthropicKey || !googleKey) {
+      throw new Error("Missing required API keys in environment variables");
+    }
+
+    // Call the action to fetch models
+    return await ctx.runAction(internal.chat.fetchAvailableModels, {
+      openaiKey,
+      anthropicKey,
+      googleKey,
+    });
   },
 });
