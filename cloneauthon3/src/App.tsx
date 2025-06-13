@@ -7,20 +7,34 @@ import { Layout } from "./components/Layout";
 import { ChatPage } from "./pages/ChatPage";
 import { AdminPage } from "./pages/AdminPage";
 import { HomePage } from "./pages/HomePage";
+import TempChatPage from "./pages/TempChatPage";
+import { ConvexAuthProvider } from "@convex-dev/auth/react";
+import { ConvexReactClient } from "convex/react";
+
+const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL as string);
 
 export default function App() {
   return (
-    <Router>
-      <div className="min-h-screen bg-gray-50">
-        <Authenticated>
-          <AuthenticatedApp />
-        </Authenticated>
-        <Unauthenticated>
-          <UnauthenticatedApp />
-        </Unauthenticated>
-        <Toaster />
-      </div>
-    </Router>
+    <ConvexAuthProvider client={convex}>
+      <Router>
+        <div className="min-h-screen bg-gray-50">
+          <Routes>
+            <Route path="/temp-chat" element={<TempChatPage />} />
+            <Route path="*" element={
+              <>
+                <Authenticated>
+                  <AuthenticatedApp />
+                </Authenticated>
+                <Unauthenticated>
+                  <UnauthenticatedApp />
+                </Unauthenticated>
+              </>
+            } />
+          </Routes>
+          <Toaster />
+        </div>
+      </Router>
+    </ConvexAuthProvider>
   );
 }
 

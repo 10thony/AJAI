@@ -15,9 +15,11 @@ import type {
 } from "convex/server";
 import type * as aiModels from "../aiModels.js";
 import type * as auth from "../auth.js";
+import type * as chat from "../chat.js";
 import type * as chats from "../chats.js";
 import type * as http from "../http.js";
 import type * as messages from "../messages.js";
+import type * as openai from "../openai.js";
 import type * as router from "../router.js";
 import type * as userRoles from "../userRoles.js";
 
@@ -32,9 +34,11 @@ import type * as userRoles from "../userRoles.js";
 declare const fullApi: ApiFromModules<{
   aiModels: typeof aiModels;
   auth: typeof auth;
+  chat: typeof chat;
   chats: typeof chats;
   http: typeof http;
   messages: typeof messages;
+  openai: typeof openai;
   router: typeof router;
   userRoles: typeof userRoles;
 }>;

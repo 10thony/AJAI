@@ -2,6 +2,8 @@ import { query, mutation, action, internalQuery, internalMutation, internalActio
 import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { api, internal } from "./_generated/api";
+import OpenAI from "openai";
+const client = new OpenAI();
 
 // Get messages for a chat
 export const list = query({
@@ -30,6 +32,7 @@ export const send = mutation({
   args: {
     chatId: v.id("chats"),
     content: v.string(),
+    apiKey: v.string(),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
@@ -58,13 +61,15 @@ export const send = mutation({
       role: "assistant",
     });
     
-    // Schedule AI response
+    // Schedule AI response with API key
     await ctx.scheduler.runAfter(0, internal.messages.generateAIResponse, {
       chatId: args.chatId,
       messageId: aiMessageId,
+      apiKey: args.apiKey,
     });
   },
 });
+
 
 // Update streaming message (internal)
 export const updateStreamingMessage = internalMutation({
@@ -84,6 +89,7 @@ export const generateAIResponse = internalAction({
   args: { 
     chatId: v.id("chats"),
     messageId: v.id("messages"),
+    apiKey: v.string(),
   },
   handler: async (ctx, args) => {
     // Get chat and model info
@@ -111,20 +117,14 @@ export const generateAIResponse = internalAction({
     }));
     
     try {
-      // Get API key from environment
-      const apiKey = process.env[chat.model.apiKeyEnvVar];
-      if (!apiKey) {
-        throw new Error(`API key not found for model ${chat.model.name}. Please check your environment variables.`);
-      }
-      
       // Call the appropriate model API based on provider
       let response;
       switch (chat.model.provider) {
         case "openai":
-          response = await callOpenAI(apiKey, chat.model.modelId, formattedMessages);
+          response = await callOpenAI(args.apiKey, chat.model.modelId, formattedMessages);
           break;
         case "anthropic":
-          response = await callAnthropic(apiKey, chat.model.modelId, formattedMessages);
+          response = await callAnthropic(args.apiKey, chat.model.modelId, formattedMessages);
           break;
         default:
           throw new Error(`Unsupported provider: ${chat.model.provider}. Please contact support.`);
@@ -143,10 +143,8 @@ export const generateAIResponse = internalAction({
       // Provide more specific error messages
       let errorMessage = "Sorry, I encountered an error while generating a response.";
       if (error instanceof Error) {
-        if (error.message.includes("API key not found")) {
-          errorMessage = "Error: API key not configured. Please contact your administrator.";
-        } else if (error.message.includes("API error")) {
-          errorMessage = "Error: Failed to connect to the AI service. Please try again later.";
+        if (error.message.includes("API error")) {
+          errorMessage = "Error: Failed to connect to the AI service. Please check your API key and try again.";
         } else if (error.message.includes("Unsupported provider")) {
           errorMessage = "Error: Unsupported AI model provider. Please contact support.";
         }
@@ -179,55 +177,24 @@ export const getChatWithModel = internalQuery({
 
 // Helper functions for different model providers
 async function* callOpenAI(apiKey: string, modelId: string, messages: any[]) {
-  const response = await fetch("https://api.openai.com/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
+  const client = new OpenAI({ apiKey });
+  
+  try {
+    const stream = await client.chat.completions.create({
       model: modelId,
       messages,
       stream: true,
-    }),
-  });
+    });
 
-  if (!response.ok) {
-    throw new Error(`OpenAI API error: ${response.statusText}`);
-  }
-
-  const reader = response.body?.getReader();
-  if (!reader) {
-    throw new Error("Failed to get response reader");
-  }
-
-  const decoder = new TextDecoder();
-  let buffer = "";
-
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-
-    buffer += decoder.decode(value, { stream: true });
-    const lines = buffer.split("\n");
-    buffer = lines.pop() || "";
-
-    for (const line of lines) {
-      if (line.startsWith("data: ")) {
-        const data = line.slice(6);
-        if (data === "[DONE]") continue;
-        
-        try {
-          const parsed = JSON.parse(data);
-          const content = parsed.choices[0]?.delta?.content;
-          if (content) {
-            yield content;
-          }
-        } catch (e) {
-          console.error("Error parsing OpenAI response:", e);
-        }
+    for await (const chunk of stream) {
+      const content = chunk.choices[0]?.delta?.content;
+      if (content) {
+        yield content;
       }
     }
+  } catch (error) {
+    console.error("Error in OpenAI stream:", error);
+    throw new Error(`OpenAI API error: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
 

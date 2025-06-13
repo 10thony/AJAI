@@ -1,8 +1,9 @@
-import { useQuery, useMutation } from "convex/react";
+import { useQuery, useAction } from "convex/react";
 import { useParams, Navigate } from "react-router-dom";
 import { api } from "../../convex/_generated/api";
 import { useState, useRef, useEffect } from "react";
 import { Id } from "../../convex/_generated/dataModel";
+import Anthropic from "@anthropic-ai/sdk";
 
 type Message = {
   _id: Id<"messages">;
@@ -19,15 +20,20 @@ type LocalMessage = {
   createdAt: number;
 };
 
+type LLMProvider = "anthropic" | "openai";
+
 export function ChatPage() {
   const { chatId } = useParams<{ chatId: string }>();
   const chat = useQuery(api.chats.get, chatId ? { id: chatId as Id<"chats"> } : "skip");
   const messages = useQuery(api.messages.list, chatId ? { chatId: chatId as Id<"chats"> } : "skip");
-  const sendMessage = useMutation(api.messages.send);
+  const sendAnthropicMessage = useAction(api.chat.sendAnthropicMessage);
+  const sendOpenAIMessage = useAction(api.chat.sendOpenAIMessage);
   
   const [input, setInput] = useState("");
+  const [apiKey, setApiKey] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [localMessages, setLocalMessages] = useState<(Message | LocalMessage)[]>([]);
+  const [selectedProvider, setSelectedProvider] = useState<LLMProvider>("anthropic");
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Mirror convex messages to local state
@@ -59,7 +65,7 @@ export function ChatPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim() || isSending) return;
+    if (!input.trim() || isSending || !apiKey.trim()) return;
 
     const messageContent = input.trim();
     setInput("");
@@ -74,22 +80,18 @@ export function ChatPage() {
     setLocalMessages(prev => [...prev, userMsg]);
 
     try {
-      // Send message to Convex
-      await sendMessage({
-        chatId: chatId as Id<"chats">,
-        content: messageContent,
-      });
+      // Send message based on selected provider
+      const response = await (selectedProvider === "anthropic" 
+        ? sendAnthropicMessage({ message: messageContent })
+        : sendOpenAIMessage({ message: messageContent }));
 
-      // Add assistant placeholder
-      const assistantPlaceholder: LocalMessage = {
+      // Add AI response to local state
+      const aiMsg: LocalMessage = {
         role: "assistant",
-        content: "",
+        content: response,
         createdAt: Date.now(),
       };
-      setLocalMessages(prev => [...prev, assistantPlaceholder]);
-
-      // The AI response will be handled by Convex's streaming system
-      // and will automatically update the messages through the useQuery hook
+      setLocalMessages(prev => [...prev, aiMsg]);
     } catch (error) {
       console.error("Failed to send message:", error);
       setInput(messageContent); // Restore input on error
@@ -99,9 +101,9 @@ export function ChatPage() {
   };
 
   return (
-    <div className="flex-1 flex flex-col">
+    <div className="h-screen flex flex-col overflow-hidden">
       {/* Chat Header */}
-      <div className="bg-white border-b border-gray-200 px-6 py-4">
+      <div className="flex-none bg-white border-b border-gray-200 px-6 py-4">
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-lg font-semibold text-gray-900">{chat.title}</h2>
@@ -152,20 +154,50 @@ export function ChatPage() {
       </div>
 
       {/* Input Form */}
-      <div className="bg-white border-t border-gray-200 p-6">
-        <form onSubmit={handleSubmit} className="max-w-3xl mx-auto">
+      <div className="flex-none bg-white border-t border-gray-200 p-6">
+        <form onSubmit={handleSubmit} className="max-w-3xl mx-auto space-y-4">
+          <div className="flex space-x-4">
+            <div className="flex-1">
+              <label htmlFor="apiKey" className="block text-sm font-medium text-gray-700 mb-1">
+                API Key
+              </label>
+              <input
+                id="apiKey"
+                type="password"
+                value={apiKey}
+                onChange={(e) => setApiKey(e.target.value)}
+                placeholder="Enter your API key..."
+                required
+                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+            <div className="w-48">
+              <label htmlFor="provider" className="block text-sm font-medium text-gray-700 mb-1">
+                AI Provider
+              </label>
+              <select
+                id="provider"
+                value={selectedProvider}
+                onChange={(e) => setSelectedProvider(e.target.value as LLMProvider)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="anthropic">Anthropic (Claude)</option>
+                <option value="openai">OpenAI (GPT-4)</option>
+              </select>
+            </div>
+          </div>
           <div className="flex space-x-4">
             <input
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder="Type your message..."
-              disabled={isSending}
+              disabled={isSending || !apiKey.trim()}
               className="flex-1 px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
             />
             <button
               type="submit"
-              disabled={!input.trim() || isSending}
+              disabled={!input.trim() || isSending || !apiKey.trim()}
               className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isSending ? "Sending..." : "Send"}
