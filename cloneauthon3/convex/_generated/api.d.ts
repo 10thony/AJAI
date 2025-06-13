@@ -18,6 +18,7 @@ import type * as auth from "../auth.js";
 import type * as chat from "../chat.js";
 import type * as chats from "../chats.js";
 import type * as http from "../http.js";
+import type * as logs from "../logs.js";
 import type * as messages from "../messages.js";
 import type * as openai from "../openai.js";
 import type * as router from "../router.js";
@@ -37,6 +38,7 @@ declare const fullApi: ApiFromModules<{
   chat: typeof chat;
   chats: typeof chats;
   http: typeof http;
+  logs: typeof logs;
   messages: typeof messages;
   openai: typeof openai;
   router: typeof router;
