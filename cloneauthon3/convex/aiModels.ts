@@ -51,6 +51,11 @@ export const create = mutation({
     description: v.optional(v.string()),
     maxTokens: v.optional(v.number()),
     temperature: v.optional(v.number()),
+    helpLinks: v.optional(v.array(v.object({
+      title: v.string(),
+      url: v.string(),
+      description: v.optional(v.string()),
+    }))),
   },
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
@@ -58,8 +63,8 @@ export const create = mutation({
     return await ctx.db.insert("aiModels", {
       ...args,
       isActive: true,
-      createdAt: 0,
-      updatedAt: 0
+      createdAt: Date.now(),
+      updatedAt: Date.now()
     });
   },
 });
@@ -76,12 +81,20 @@ export const update = mutation({
     maxTokens: v.optional(v.number()),
     temperature: v.optional(v.number()),
     isActive: v.optional(v.boolean()),
+    helpLinks: v.optional(v.array(v.object({
+      title: v.string(),
+      url: v.string(),
+      description: v.optional(v.string()),
+    }))),
   },
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
     
     const { id, ...updates } = args;
-    await ctx.db.patch(id, updates);
+    await ctx.db.patch(id, {
+      ...updates,
+      updatedAt: Date.now()
+    });
   },
 });
 

@@ -1,6 +1,13 @@
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { useState } from "react";
+import { Plus, X } from "lucide-react";
+
+type HelpLink = {
+  title: string;
+  url: string;
+  description?: string;
+};
 
 export function AdminPage() {
   const aiModels = useQuery(api.aiModels.listAll) || [];
@@ -18,6 +25,13 @@ export function AdminPage() {
     description: "",
     maxTokens: "",
     temperature: "",
+    helpLinks: [] as HelpLink[],
+  });
+
+  const [newHelpLink, setNewHelpLink] = useState<HelpLink>({
+    title: "",
+    url: "",
+    description: "",
   });
 
   const resetForm = () => {
@@ -29,6 +43,12 @@ export function AdminPage() {
       description: "",
       maxTokens: "",
       temperature: "",
+      helpLinks: [],
+    });
+    setNewHelpLink({
+      title: "",
+      url: "",
+      description: "",
     });
     setEditingId(null);
   };
@@ -46,6 +66,7 @@ export function AdminPage() {
         description: formData.description || undefined,
         maxTokens: formData.maxTokens ? parseInt(formData.maxTokens) : undefined,
         temperature: formData.temperature ? parseFloat(formData.temperature) : undefined,
+        helpLinks: formData.helpLinks,
       };
 
       if (editingId) {
@@ -71,8 +92,30 @@ export function AdminPage() {
       description: model.description || "",
       maxTokens: model.maxTokens?.toString() || "",
       temperature: model.temperature?.toString() || "",
+      helpLinks: model.helpLinks || [],
     });
     setEditingId(model._id);
+  };
+
+  const addHelpLink = () => {
+    if (newHelpLink.title && newHelpLink.url) {
+      setFormData({
+        ...formData,
+        helpLinks: [...formData.helpLinks, { ...newHelpLink }],
+      });
+      setNewHelpLink({
+        title: "",
+        url: "",
+        description: "",
+      });
+    }
+  };
+
+  const removeHelpLink = (index: number) => {
+    setFormData({
+      ...formData,
+      helpLinks: formData.helpLinks.filter((_, i) => i !== index),
+    });
   };
 
   const handleToggleActive = async (model: any) => {
@@ -97,8 +140,8 @@ export function AdminPage() {
   };
 
   return (
-    <div className="flex-1 p-6 overflow-y-auto bg-gray-50 dark:bg-gray-900">
-      <div className="max-w-6xl mx-auto">
+    <div className="h-full flex-1 p-6 overflow-y-auto bg-gray-50 dark:bg-gray-900 scrollbar-thin scrollbar-thumb-gray-400 dark:scrollbar-thumb-gray-600 scrollbar-track-gray-200 dark:scrollbar-track-gray-800">
+      <div className="max-w-6xl mx-auto min-h-full">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">Admin Dashboard</h1>
 
         <div className="grid lg:grid-cols-2 gap-8">
@@ -214,6 +257,84 @@ export function AdminPage() {
                 </div>
               </div>
 
+              {/* Help Links Section */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-medium text-gray-900 dark:text-white">Help Links</h3>
+                
+                {/* Existing Help Links */}
+                {formData.helpLinks.length > 0 && (
+                  <div className="space-y-2">
+                    {formData.helpLinks.map((link, index) => (
+                      <div key={index} className="flex items-center space-x-2 p-2 bg-gray-50 dark:bg-gray-700 rounded-md">
+                        <div className="flex-1">
+                          <div className="font-medium text-gray-900 dark:text-white">{link.title}</div>
+                          <div className="text-sm text-gray-500 dark:text-gray-400">{link.url}</div>
+                          {link.description && (
+                            <div className="text-sm text-gray-500 dark:text-gray-400">{link.description}</div>
+                          )}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => removeHelpLink(index)}
+                          className="p-1 text-gray-500 hover:text-red-500 dark:text-gray-400 dark:hover:text-red-400"
+                        >
+                          <X size={16} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Add New Help Link Form */}
+                <div className="space-y-2 p-4 border border-gray-200 dark:border-gray-700 rounded-md">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Link Title
+                    </label>
+                    <input
+                      type="text"
+                      value={newHelpLink.title}
+                      onChange={(e) => setNewHelpLink({ ...newHelpLink, title: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                      placeholder="e.g., API Documentation"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      URL
+                    </label>
+                    <input
+                      type="url"
+                      value={newHelpLink.url}
+                      onChange={(e) => setNewHelpLink({ ...newHelpLink, url: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                      placeholder="e.g., https://docs.example.com"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Description (Optional)
+                    </label>
+                    <input
+                      type="text"
+                      value={newHelpLink.description}
+                      onChange={(e) => setNewHelpLink({ ...newHelpLink, description: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                      placeholder="Brief description of the link"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={addHelpLink}
+                    disabled={!newHelpLink.title || !newHelpLink.url}
+                    className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 dark:hover:bg-blue-500 disabled:opacity-50"
+                  >
+                    <Plus size={16} />
+                    <span>Add Help Link</span>
+                  </button>
+                </div>
+              </div>
+
               <div className="flex space-x-3">
                 <button
                   type="submit"
@@ -265,9 +386,6 @@ export function AdminPage() {
                       {model.description && (
                         <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{model.description}</p>
                       )}
-                      <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-                        API Key: {model.apiKeyEnvVar}
-                      </p>
                     </div>
                     
                     <div className="flex items-center space-x-2 ml-4">

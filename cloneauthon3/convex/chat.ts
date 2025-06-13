@@ -120,6 +120,11 @@ export const getModelInfo = internalQuery({
     description: v.optional(v.string()),
     maxTokens: v.optional(v.number()),
     temperature: v.optional(v.number()),
+    helpLinks: v.optional(v.array(v.object({
+      title: v.string(),
+      url: v.string(),
+      description: v.optional(v.string()),
+    }))),
     createdAt: v.number(),
     updatedAt: v.number(),
   }), v.null()),

@@ -13,6 +13,11 @@ const applicationTables = {
     description: v.optional(v.string()),
     maxTokens: v.optional(v.number()),
     temperature: v.optional(v.number()),
+    helpLinks: v.optional(v.array(v.object({
+      title: v.string(),
+      url: v.string(),
+      description: v.optional(v.string()),
+    }))),
     createdAt: v.number(), // Track when model was added
     updatedAt: v.number(), // Track when model was last updated
   }).index("by_provider", ["provider"])
