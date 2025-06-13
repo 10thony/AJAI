@@ -11,7 +11,6 @@ export function HomePage() {
   
   const makeAdmin = useMutation(api.userRoles.makeCurrentUserAdmin);
   const seedModels = useMutation(api.aiModels.seedModels);
-  const seedOpenSourceModels = useMutation(api.openSourceModels.seedOpenSourceModels);
   const [isSeeding, setIsSeeding] = useState(false);
 
   const handleSetupApp = async () => {
@@ -19,7 +18,6 @@ export function HomePage() {
     try {
       await makeAdmin();
       await seedModels();
-      await seedOpenSourceModels();
     } catch (error) {
       console.error("Setup failed:", error);
     } finally {

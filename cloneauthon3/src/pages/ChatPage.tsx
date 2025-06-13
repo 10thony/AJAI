@@ -4,6 +4,7 @@ import { api } from "../../convex/_generated/api";
 import { useState, useRef, useEffect } from "react";
 import { Id } from "../../convex/_generated/dataModel";
 import Anthropic from "@anthropic-ai/sdk";
+import { Settings } from "lucide-react";
 
 type Message = {
   _id: Id<"messages">;
@@ -20,7 +21,16 @@ type LocalMessage = {
   createdAt: number;
 };
 
-type LLMProvider = "anthropic" | "openai";
+type LLMProvider = "anthropic" | "openai" | "huggingface";
+
+type GroupedModels = {
+  [key in LLMProvider]?: {
+    _id: Id<"aiModels">;
+    name: string;
+    modelId: string;
+    description?: string;
+  }[];
+};
 
 export function ChatPage() {
   const { chatId } = useParams<{ chatId: string }>();
@@ -28,13 +38,44 @@ export function ChatPage() {
   const messages = useQuery(api.messages.list, chatId ? { chatId: chatId as Id<"chats"> } : "skip");
   const sendAnthropicMessage = useAction(api.chat.sendAnthropicMessage);
   const sendOpenAIMessage = useAction(api.chat.sendOpenAIMessage);
+  const sendHuggingFaceMessage = useAction(api.chat.sendHuggingFaceMessage);
+  const activeModels = useQuery(api.aiModels.listActive) || [];
   
   const [input, setInput] = useState("");
   const [apiKey, setApiKey] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [localMessages, setLocalMessages] = useState<(Message | LocalMessage)[]>([]);
   const [selectedProvider, setSelectedProvider] = useState<LLMProvider>("anthropic");
+  const [showSettings, setShowSettings] = useState(true);
+  const [selectedModelId, setSelectedModelId] = useState<Id<"aiModels"> | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Group models by provider
+  const groupedModels = activeModels.reduce<GroupedModels>((acc, model) => {
+    const provider = model.provider as LLMProvider;
+    if (!acc[provider]) {
+      acc[provider] = [];
+    }
+    acc[provider]?.push({
+      _id: model._id,
+      name: model.name,
+      modelId: model.modelId,
+      description: model.description,
+    });
+    return acc;
+  }, {});
+
+  // Set initial model when chat loads
+  useEffect(() => {
+    if (chat && activeModels.length > 0) {
+      setSelectedModelId(chat.modelId);
+      // Set provider based on the selected model
+      const selectedModel = activeModels.find(m => m._id === chat.modelId);
+      if (selectedModel) {
+        setSelectedProvider(selectedModel.provider as LLMProvider);
+      }
+    }
+  }, [chat, activeModels]);
 
   // Mirror convex messages to local state
   useEffect(() => {
@@ -85,9 +126,20 @@ export function ChatPage() {
 
     try {
       // Send message based on selected provider
-      const response = await (selectedProvider === "anthropic" 
-        ? sendAnthropicMessage({ message: messageContent })
-        : sendOpenAIMessage({ message: messageContent }));
+      let response;
+      switch (selectedProvider) {
+        case "anthropic":
+          response = await sendAnthropicMessage({ message: messageContent });
+          break;
+        case "openai":
+          response = await sendOpenAIMessage({ message: messageContent });
+          break;
+        case "huggingface":
+          response = await sendHuggingFaceMessage({ message: messageContent });
+          break;
+        default:
+          throw new Error(`Unsupported provider: ${selectedProvider}`);
+      }
 
       // Add AI response to local state
       const aiMsg: LocalMessage = {
@@ -115,8 +167,103 @@ export function ChatPage() {
               Using {chat.model?.name || "Unknown Model"}
             </p>
           </div>
+          <div className="flex items-center space-x-4">
+            {activeModels.length > 0 && (
+              <select
+                value={selectedModelId || ""}
+                onChange={(e) => {
+                  const modelId = e.target.value as Id<"aiModels">;
+                  setSelectedModelId(modelId);
+                  const model = activeModels.find(m => m._id === modelId);
+                  if (model) {
+                    setSelectedProvider(model.provider as LLMProvider);
+                  }
+                }}
+                className="px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="">Select a model</option>
+                {activeModels.map((model) => (
+                  <option key={model._id} value={model._id}>
+                    {model.name} ({model.provider})
+                  </option>
+                ))}
+              </select>
+            )}
+            <button
+              onClick={() => setShowSettings(!showSettings)}
+              className="p-2 text-gray-500 hover:text-gray-700"
+            >
+              <Settings size={20} />
+            </button>
+          </div>
         </div>
       </div>
+
+      {/* Settings Panel */}
+      {showSettings && (
+        <div className="absolute top-16 right-4 bg-white border border-gray-200 rounded-lg shadow-lg p-4 z-10">
+          <h3 className="text-lg font-semibold mb-4">Settings</h3>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                API Key
+              </label>
+              <input
+                type="password"
+                value={apiKey}
+                onChange={(e) => setApiKey(e.target.value)}
+                placeholder="Enter your API key..."
+                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                AI Provider
+              </label>
+              <select
+                value={selectedProvider}
+                onChange={(e) => {
+                  const provider = e.target.value as LLMProvider;
+                  setSelectedProvider(provider);
+                  // Reset selected model when provider changes
+                  setSelectedModelId(null);
+                }}
+                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                {Object.keys(groupedModels).map((provider) => (
+                  <option key={provider} value={provider}>
+                    {provider.charAt(0).toUpperCase() + provider.slice(1)}
+                  </option>
+                ))}
+              </select>
+            </div>
+            {groupedModels[selectedProvider] && groupedModels[selectedProvider]!.length > 0 && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Model
+                </label>
+                <select
+                  value={selectedModelId || ""}
+                  onChange={(e) => setSelectedModelId(e.target.value as Id<"aiModels">)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="">Select a model</option>
+                  {groupedModels[selectedProvider]!.map((model) => (
+                    <option key={model._id} value={model._id}>
+                      {model.name} ({model.modelId})
+                    </option>
+                  ))}
+                </select>
+                {groupedModels[selectedProvider]!.find(m => m._id === selectedModelId)?.description && (
+                  <p className="mt-1 text-sm text-gray-500">
+                    {groupedModels[selectedProvider]!.find(m => m._id === selectedModelId)?.description}
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-6">
@@ -163,37 +310,7 @@ export function ChatPage() {
 
       {/* Input Form */}
       <div className="flex-none bg-white border-t border-gray-200 p-6">
-        <form onSubmit={handleSubmit} className="max-w-3xl mx-auto space-y-4">
-          <div className="flex space-x-4">
-            <div className="flex-1">
-              <label htmlFor="apiKey" className="block text-sm font-medium text-gray-700 mb-1">
-                API Key
-              </label>
-              <input
-                id="apiKey"
-                type="password"
-                value={apiKey}
-                onChange={(e) => setApiKey(e.target.value)}
-                placeholder="Enter your API key..."
-                required
-                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
-            <div className="w-48">
-              <label htmlFor="provider" className="block text-sm font-medium text-gray-700 mb-1">
-                AI Provider
-              </label>
-              <select
-                id="provider"
-                value={selectedProvider}
-                onChange={(e) => setSelectedProvider(e.target.value as LLMProvider)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="anthropic">Anthropic (Claude)</option>
-                <option value="openai">OpenAI (GPT-4)</option>
-              </select>
-            </div>
-          </div>
+        <form onSubmit={handleSubmit} className="max-w-3xl mx-auto">
           <div className="flex space-x-4">
             <input
               type="text"

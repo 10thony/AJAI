@@ -118,6 +118,38 @@ export const seedModels = mutation({
         description: "Balanced performance",
         isActive: true,
       },
+      {
+        name: "Llama 2 7B",
+        provider: "huggingface",
+        modelId: "llama2",
+        apiKeyEnvVar: "HF_API_KEY",
+        description: "Meta's Llama 2 7B model",
+        isActive: true,
+      },
+      {
+        name: "Mistral 7B",
+        provider: "huggingface",
+        modelId: "mistral",
+        apiKeyEnvVar: "HF_API_KEY",
+        description: "Mistral AI's 7B model",
+        isActive: true,
+      },
+      {
+        name: "Code Llama",
+        provider: "huggingface",
+        modelId: "codellama",
+        apiKeyEnvVar: "HF_API_KEY",
+        description: "Meta's Code Llama model",
+        isActive: true,
+      },
+      {
+        name: "Phi-2",
+        provider: "huggingface",
+        modelId: "phi-2",
+        apiKeyEnvVar: "HF_API_KEY",
+        description: "Microsoft's Phi-2 model",
+        isActive: true,
+      }
     ];
     for (const model of models) {
       await ctx.db.insert("aiModels", {

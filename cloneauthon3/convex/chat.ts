@@ -2,6 +2,7 @@ import { action } from "./_generated/server";
 import { v } from "convex/values";
 import Anthropic from "@anthropic-ai/sdk";
 import OpenAI from "openai";
+import { internal } from "./_generated/api";
 
 // Initialize Anthropic client
 const anthropic = new Anthropic({
@@ -67,5 +68,15 @@ export const sendOpenAIMessage = action({
       console.error("Error in OpenAI chat submission:", error);
       throw new Error(error.message || "An unexpected error occurred.");
     }
+  },
+});
+
+// Send message to Hugging Face model
+export const sendHuggingFaceMessage = action({
+  args: { message: v.string() },
+  returns: v.string(),
+  handler: async (ctx, args) => {
+    // For now, return a mock response
+    return `[Hugging Face] I received your message: "${args.message}"`;
   },
 });
