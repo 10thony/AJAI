@@ -52,9 +52,9 @@ export function Sidebar() {
   };
 
   return (
-    <div className="w-64 bg-white border-r border-gray-200 flex flex-col">
+    <div className="w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col">
       {/* New Chat Button */}
-      <div className="p-4 border-b border-gray-200">
+      <div className="p-4 border-b border-gray-200 dark:border-gray-700">
         <button
           onClick={handleNewChat}
           disabled={isCreating || aiModels.length === 0}
@@ -67,7 +67,7 @@ export function Sidebar() {
       {/* Chat List */}
       <div className="flex-1 overflow-y-auto">
         <div className="p-4">
-          <h3 className="text-sm font-medium text-gray-500 mb-3">Recent Chats</h3>
+          <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-3">Recent Chats</h3>
           <div className="space-y-2">
             {chats.map((chat) => (
               <Link
@@ -75,41 +75,41 @@ export function Sidebar() {
                 to={`/chat/${chat._id}`}
                 className={`block p-3 rounded-md text-sm group relative ${
                   chatId === chat._id
-                    ? "bg-blue-100 text-blue-700"
-                    : "text-gray-700 hover:bg-gray-100"
+                    ? "bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300"
+                    : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
                 }`}
               >
                 <div className="font-medium truncate">{chat.title}</div>
-                <div className="text-xs text-gray-500 mt-1">
+                <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                   {chat.model?.name || "Unknown Model"}
                 </div>
                 <button
                   onClick={(e) => handleDeleteChat(chat._id, e)}
                   disabled={deletingChatId === chat._id}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500 disabled:opacity-50"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500 dark:hover:text-red-400 disabled:opacity-50"
                 >
                   {deletingChatId === chat._id ? "Deleting..." : "×"}
                 </button>
               </Link>
             ))}
             {chats.length === 0 && (
-              <p className="text-gray-500 text-sm">No chats yet</p>
+              <p className="text-gray-500 dark:text-gray-400 text-sm">No chats yet</p>
             )}
           </div>
         </div>
       </div>
 
       {/* Model Info */}
-      <div className="p-4 border-t border-gray-200">
-        <h3 className="text-sm font-medium text-gray-500 mb-2">Available Models</h3>
+      <div className="p-4 border-t border-gray-200 dark:border-gray-700">
+        <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">Available Models</h3>
         <div className="space-y-1">
           {aiModels.map((model) => (
-            <div key={model._id} className="text-xs text-gray-600">
+            <div key={model._id} className="text-xs text-gray-600 dark:text-gray-300">
               {model.name}
             </div>
           ))}
           {aiModels.length === 0 && (
-            <p className="text-xs text-gray-500">No models configured</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">No models configured</p>
           )}
         </div>
       </div>
