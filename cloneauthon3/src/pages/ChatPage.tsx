@@ -198,6 +198,18 @@ export function ChatPage() {
           url: "https://huggingface.co/docs/inference-endpoints/index",
           description: "Learn about Hugging Face's API and models"
         }
+      ],
+      google: [
+        {
+          title: "Get Google AI API Key",
+          url: "https://makersuite.google.com/app/apikey",
+          description: "Create an API key to use Google Gemini models"
+        },
+        {
+          title: "Google AI Documentation",
+          url: "https://ai.google.dev/docs/gemini_api_overview",
+          description: "Learn about Google's Gemini API and models"
+        }
       ]
     },
     modelSpecificLinks: {
