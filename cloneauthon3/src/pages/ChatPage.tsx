@@ -7,6 +7,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { Settings, Maximize2, Minimize2, GripVertical } from "lucide-react";
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { HelpWidget } from "../components/HelpWidget";
 
 type Message = {
   _id: Id<"messages">;
@@ -147,6 +148,71 @@ export function ChatPage() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [localMessages]);
+
+  // Define help content with provider-specific and model-specific links
+  const helpContent = {
+    defaultLinks: [
+      {
+        title: "Getting Started",
+        url: "https://docs.example.com/getting-started",
+        description: "Learn the basics of using the chat interface"
+      },
+      {
+        title: "Support",
+        url: "https://support.example.com",
+        description: "Get help with any issues"
+      }
+    ],
+    providerSpecificLinks: {
+      anthropic: [
+        {
+          title: "Get Anthropic API Key",
+          url: "https://console.anthropic.com/account/keys",
+          description: "Create an API key to use Claude models"
+        },
+        {
+          title: "Anthropic Documentation",
+          url: "https://docs.anthropic.com/claude/reference/getting-started-with-the-api",
+          description: "Learn about Anthropic's API and models"
+        }
+      ],
+      openai: [
+        {
+          title: "Get OpenAI API Key",
+          url: "https://platform.openai.com/api-keys",
+          description: "Create an API key to use OpenAI models"
+        },
+        {
+          title: "OpenAI Documentation",
+          url: "https://platform.openai.com/docs/api-reference",
+          description: "Learn about OpenAI's API and models"
+        }
+      ],
+      huggingface: [
+        {
+          title: "Get Hugging Face API Key",
+          url: "https://huggingface.co/settings/tokens",
+          description: "Create an API key to use Hugging Face models"
+        },
+        {
+          title: "Hugging Face Documentation",
+          url: "https://huggingface.co/docs/inference-endpoints/index",
+          description: "Learn about Hugging Face's API and models"
+        }
+      ]
+    },
+    modelSpecificLinks: {
+      // Add model-specific links here if needed
+      // Example:
+      // "claude-3-opus": [
+      //   {
+      //     title: "Claude 3 Opus Guide",
+      //     url: "https://docs.anthropic.com/claude/docs/claude-3-opus",
+      //     description: "Learn about Claude 3 Opus capabilities"
+      //   }
+      // ]
+    }
+  };
 
   if (!chatId) {
     return <Navigate to="/" replace />;
@@ -426,6 +492,13 @@ export function ChatPage() {
           </form>
         </div>
       </div>
+
+      {/* Add HelpWidget with provider and model context */}
+      <HelpWidget 
+        content={helpContent}
+        selectedProvider={selectedProvider}
+        selectedModelId={selectedModelId}
+      />
     </div>
   );
 }
