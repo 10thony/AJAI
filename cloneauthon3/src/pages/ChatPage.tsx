@@ -220,81 +220,9 @@ export function ChatPage() {
                 ))}
               </select>
             )}
-            <button
-              onClick={() => setShowSettings(!showSettings)}
-              className="p-2 text-gray-500 hover:text-gray-700"
-            >
-              <Settings size={20} />
-            </button>
           </div>
         </div>
       </div>
-
-      {/* Settings Panel */}
-      {showSettings && (
-        <div className="absolute top-16 right-4 bg-white border border-gray-200 rounded-lg shadow-lg p-4 z-10">
-          <h3 className="text-lg font-semibold mb-4">Settings</h3>
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                API Key
-              </label>
-              <input
-                type="password"
-                value={apiKey}
-                onChange={(e) => setApiKey(e.target.value)}
-                placeholder="Enter your API key..."
-                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                AI Provider
-              </label>
-              <select
-                value={selectedProvider}
-                onChange={(e) => {
-                  const provider = e.target.value as LLMProvider;
-                  setSelectedProvider(provider);
-                  // Reset selected model when provider changes
-                  setSelectedModelId(null);
-                }}
-                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                {Object.keys(groupedModels).map((provider) => (
-                  <option key={provider} value={provider}>
-                    {provider.charAt(0).toUpperCase() + provider.slice(1)}
-                  </option>
-                ))}
-              </select>
-            </div>
-            {groupedModels[selectedProvider] && groupedModels[selectedProvider]!.length > 0 && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Model
-                </label>
-                <select
-                  value={selectedModelId || ""}
-                  onChange={(e) => setSelectedModelId(e.target.value as Id<"aiModels">)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  <option value="">Select a model</option>
-                  {groupedModels[selectedProvider]!.map((model) => (
-                    <option key={model._id} value={model._id}>
-                      {model.name} ({model.modelId})
-                    </option>
-                  ))}
-                </select>
-                {groupedModels[selectedProvider]!.find(m => m._id === selectedModelId)?.description && (
-                  <p className="mt-1 text-sm text-gray-500">
-                    {groupedModels[selectedProvider]!.find(m => m._id === selectedModelId)?.description}
-                  </p>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-6">
@@ -341,10 +269,82 @@ export function ChatPage() {
         </div>
       </div>
 
-      {/* Input Form */}
+      {/* Input Form with Settings */}
       <div className="flex-none bg-white border-t border-gray-200 p-6">
-        <form onSubmit={handleSubmit} className="max-w-3xl mx-auto">
-          <div className="flex space-x-4">
+        <div className="max-w-3xl mx-auto">
+          {/* Settings Panel */}
+          {showSettings && (
+            <div className="mb-4 bg-gray-50 border border-gray-200 rounded-lg p-4">
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    API Key
+                  </label>
+                  <input
+                    type="password"
+                    value={apiKey}
+                    onChange={(e) => setApiKey(e.target.value)}
+                    placeholder="Enter your API key..."
+                    className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    AI Provider
+                  </label>
+                  <select
+                    value={selectedProvider}
+                    onChange={(e) => {
+                      const provider = e.target.value as LLMProvider;
+                      setSelectedProvider(provider);
+                      // Reset selected model when provider changes
+                      setSelectedModelId(null);
+                    }}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    {Object.keys(groupedModels).map((provider) => (
+                      <option key={provider} value={provider}>
+                        {provider.charAt(0).toUpperCase() + provider.slice(1)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                {groupedModels[selectedProvider] && groupedModels[selectedProvider]!.length > 0 && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Model
+                    </label>
+                    <select
+                      value={selectedModelId || ""}
+                      onChange={(e) => setSelectedModelId(e.target.value as Id<"aiModels">)}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                      <option value="">Select a model</option>
+                      {groupedModels[selectedProvider]!.map((model) => (
+                        <option key={model._id} value={model._id}>
+                          {model.name} ({model.modelId})
+                        </option>
+                      ))}
+                    </select>
+                    {groupedModels[selectedProvider]!.find(m => m._id === selectedModelId)?.description && (
+                      <p className="mt-1 text-sm text-gray-500">
+                        {groupedModels[selectedProvider]!.find(m => m._id === selectedModelId)?.description}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="flex items-center space-x-4">
+            <button
+              type="button"
+              onClick={() => setShowSettings(!showSettings)}
+              className="p-2 text-gray-500 hover:text-gray-700"
+            >
+              <Settings size={20} />
+            </button>
             <input
               type="text"
               value={input}
@@ -360,8 +360,8 @@ export function ChatPage() {
             >
               {isSending ? "Sending..." : "Send"}
             </button>
-          </div>
-        </form>
+          </form>
+        </div>
       </div>
     </div>
   );
