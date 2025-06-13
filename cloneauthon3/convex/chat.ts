@@ -52,14 +52,14 @@ export const sendOpenAIMessage = action({
   handler: async (ctx, args) => {
     try {
       const completion = await openai.chat.completions.create({
-        model: "o3-mini-2025-01-31",
+        model: "o3-mini",
         messages: [
           {
             role: "user",
             content: args.message,
           },
         ],
-        max_tokens: 1024,
+        max_completion_tokens: 1024,
       });
 
       const assistantResponse = completion.choices[0]?.message?.content || "No response.";
