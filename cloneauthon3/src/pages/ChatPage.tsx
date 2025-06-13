@@ -24,10 +24,11 @@ type LocalMessage = {
   createdAt: number;
 };
 
-type LLMProvider = "anthropic" | "openai" | "huggingface";
+// Make LLMProvider dynamic based on available providers
+type LLMProvider = string;
 
 type GroupedModels = {
-  [key in LLMProvider]?: {
+  [key: string]: {
     _id: Id<"aiModels">;
     name: string;
     modelId: string;
@@ -68,9 +69,7 @@ export function ChatPage() {
   const { chatId } = useParams<{ chatId: string }>();
   const chat = useQuery(api.chats.get, chatId ? { id: chatId as Id<"chats"> } : "skip");
   const messages = useQuery(api.messages.list, chatId ? { chatId: chatId as Id<"chats"> } : "skip");
-  const sendAnthropicMessage = useAction(api.chat.sendAnthropicMessage);
-  const sendOpenAIMessage = useAction(api.chat.sendOpenAIMessage);
-  const sendHuggingFaceMessage = useAction(api.chat.sendHuggingFaceMessage);
+  const sendMessage = useAction(api.chat.sendMessage);
   const activeModels = useQuery(api.aiModels.listActive) || [];
   
   const [input, setInput] = useState("");
@@ -133,7 +132,7 @@ export function ChatPage() {
       // Set provider based on the selected model
       const selectedModel = activeModels.find(m => m._id === chat.modelId);
       if (selectedModel) {
-        setSelectedProvider(selectedModel.provider as LLMProvider);
+        setSelectedProvider(selectedModel.provider);
       }
     }
   }, [chat, activeModels]);
@@ -236,7 +235,7 @@ export function ChatPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim() || isSending || !apiKey.trim()) return;
+    if (!input.trim() || isSending || !apiKey.trim() || !selectedModelId) return;
 
     const messageContent = input.trim();
     setInput("");
@@ -251,21 +250,12 @@ export function ChatPage() {
     setLocalMessages(prev => [...prev, userMsg]);
 
     try {
-      // Send message based on selected provider
-      let response;
-      switch (selectedProvider) {
-        case "anthropic":
-          response = await sendAnthropicMessage({ message: messageContent });
-          break;
-        case "openai":
-          response = await sendOpenAIMessage({ message: messageContent });
-          break;
-        case "huggingface":
-          response = await sendHuggingFaceMessage({ message: messageContent });
-          break;
-        default:
-          throw new Error(`Unsupported provider: ${selectedProvider}`);
-      }
+      // Send message using the selected model
+      const response = await sendMessage({
+        message: messageContent,
+        modelId: selectedModelId,
+        apiKey: apiKey
+      });
 
       // Add AI response to local state
       const aiMsg: LocalMessage = {
@@ -323,7 +313,7 @@ export function ChatPage() {
                   setSelectedModelId(modelId);
                   const model = activeModels.find(m => m._id === modelId);
                   if (model) {
-                    setSelectedProvider(model.provider as LLMProvider);
+                    setSelectedProvider(model.provider);
                   }
                 }}
                 className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"

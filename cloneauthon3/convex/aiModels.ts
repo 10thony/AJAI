@@ -119,6 +119,14 @@ export const seedModels = mutation({
         isActive: true,
       },
       {
+        name: "Gemini Pro",
+        provider: "google",
+        modelId: "gemini-pro",
+        apiKeyEnvVar: "GOOGLE_AI_API_KEY",
+        description: "Google's most capable text generation model",
+        isActive: true,
+      },
+      {
         name: "Llama 2 7B",
         provider: "huggingface",
         modelId: "llama2",
