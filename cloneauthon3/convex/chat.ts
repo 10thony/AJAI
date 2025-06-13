@@ -9,6 +9,8 @@ const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY!,
 });
 
+
+
 // Initialize OpenAI client
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY!,
@@ -22,7 +24,7 @@ export const sendAnthropicMessage = action({
   handler: async (ctx, args) => {
     try {
       const msg = await anthropic.messages.create({
-        model: "claude-opus-4-20250514",
+        model: "claude-3-5-sonnet-20241022",
         max_tokens: 1024,
         messages: [
           {

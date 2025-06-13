@@ -14,6 +14,7 @@ export function Sidebar() {
   
   const [isCreating, setIsCreating] = useState(false);
   const [deletingChatId, setDeletingChatId] = useState<Id<"chats"> | null>(null);
+  const [isCollapsed, setIsCollapsed] = useState(false);
 
   const handleNewChat = async () => {
     if (aiModels.length === 0) return;
@@ -52,22 +53,56 @@ export function Sidebar() {
   };
 
   return (
-    <div className="w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col">
+    <div className={`relative flex flex-col transition-all duration-300 ease-in-out ${
+      isCollapsed ? 'w-16' : 'w-64'
+    } bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700`}>
+      {/* Hamburger Button */}
+      <button
+        onClick={() => setIsCollapsed(!isCollapsed)}
+        className="absolute -right-3 top-4 z-10 bg-white dark:bg-gray-800 rounded-full p-1 border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700"
+      >
+        <svg
+          className={`w-4 h-4 text-gray-600 dark:text-gray-300 transition-transform duration-300 ${
+            isCollapsed ? 'rotate-180' : ''
+          }`}
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M4 6h16M4 12h16M4 18h16"
+          />
+        </svg>
+      </button>
+
       {/* New Chat Button */}
       <div className="p-4 border-b border-gray-200 dark:border-gray-700">
         <button
           onClick={handleNewChat}
           disabled={isCreating || aiModels.length === 0}
-          className="w-full bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          className={`w-full bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed ${
+            isCollapsed ? 'px-2' : ''
+          }`}
         >
-          {isCreating ? "Creating..." : "New Chat"}
+          {isCollapsed ? (
+            <svg className="w-5 h-5 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+          ) : (
+            isCreating ? "Creating..." : "New Chat"
+          )}
         </button>
       </div>
 
       {/* Chat List */}
       <div className="flex-1 overflow-y-auto">
         <div className="p-4">
-          <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-3">Recent Chats</h3>
+          {!isCollapsed && (
+            <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-3">Recent Chats</h3>
+          )}
           <div className="space-y-2">
             {chats.map((chat) => (
               <Link
@@ -79,20 +114,30 @@ export function Sidebar() {
                     : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
                 }`}
               >
-                <div className="font-medium truncate">{chat.title}</div>
-                <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  {chat.model?.name || "Unknown Model"}
-                </div>
-                <button
-                  onClick={(e) => handleDeleteChat(chat._id, e)}
-                  disabled={deletingChatId === chat._id}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500 dark:hover:text-red-400 disabled:opacity-50"
-                >
-                  {deletingChatId === chat._id ? "Deleting..." : "×"}
-                </button>
+                {isCollapsed ? (
+                  <div className="flex justify-center">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                    </svg>
+                  </div>
+                ) : (
+                  <>
+                    <div className="font-medium truncate">{chat.title}</div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      {chat.model?.name || "Unknown Model"}
+                    </div>
+                    <button
+                      onClick={(e) => handleDeleteChat(chat._id, e)}
+                      disabled={deletingChatId === chat._id}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500 dark:hover:text-red-400 disabled:opacity-50"
+                    >
+                      {deletingChatId === chat._id ? "Deleting..." : "×"}
+                    </button>
+                  </>
+                )}
               </Link>
             ))}
-            {chats.length === 0 && (
+            {chats.length === 0 && !isCollapsed && (
               <p className="text-gray-500 dark:text-gray-400 text-sm">No chats yet</p>
             )}
           </div>
@@ -100,19 +145,21 @@ export function Sidebar() {
       </div>
 
       {/* Model Info */}
-      <div className="p-4 border-t border-gray-200 dark:border-gray-700">
-        <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">Available Models</h3>
-        <div className="space-y-1">
-          {aiModels.map((model) => (
-            <div key={model._id} className="text-xs text-gray-600 dark:text-gray-300">
-              {model.name}
-            </div>
-          ))}
-          {aiModels.length === 0 && (
-            <p className="text-xs text-gray-500 dark:text-gray-400">No models configured</p>
-          )}
+      {!isCollapsed && (
+        <div className="p-4 border-t border-gray-200 dark:border-gray-700">
+          <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">Available Models</h3>
+          <div className="space-y-1">
+            {aiModels.map((model) => (
+              <div key={model._id} className="text-xs text-gray-600 dark:text-gray-300">
+                {model.name}
+              </div>
+            ))}
+            {aiModels.length === 0 && (
+              <p className="text-xs text-gray-500 dark:text-gray-400">No models configured</p>
+            )}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

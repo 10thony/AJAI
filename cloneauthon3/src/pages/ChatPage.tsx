@@ -4,7 +4,7 @@ import { api } from "../../convex/_generated/api";
 import { useState, useRef, useEffect } from "react";
 import { Id } from "../../convex/_generated/dataModel";
 import Anthropic from "@anthropic-ai/sdk";
-import { Settings } from "lucide-react";
+import { Settings, Maximize2, Minimize2, GripVertical } from "lucide-react";
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 
@@ -80,6 +80,35 @@ export function ChatPage() {
   const [showSettings, setShowSettings] = useState(true);
   const [selectedModelId, setSelectedModelId] = useState<Id<"aiModels"> | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [settingsHeight, setSettingsHeight] = useState(200); // Default height for settings panel
+  const [isResizing, setIsResizing] = useState(false);
+  const settingsRef = useRef<HTMLDivElement>(null);
+  const resizeStartY = useRef<number>(0);
+  const resizeStartHeight = useRef<number>(0);
+
+  // Add useEffect for fetching Anthropic models
+  useEffect(() => {
+    const fetchAnthropicModels = async () => {
+      if (!apiKey) return; // Only fetch if we have an API key
+      
+      try {
+        const anthropic = new Anthropic({
+          apiKey: apiKey,
+          dangerouslyAllowBrowser: true
+        });
+        
+        const anthropicModels = await anthropic.models.list({
+          limit: 20,
+        });
+        
+        console.log("Available Anthropic Models:", anthropicModels);
+      } catch (error) {
+        console.error("Error fetching Anthropic models:", error);
+      }
+    };
+
+    fetchAnthropicModels();
+  }, [apiKey]); // Re-run when apiKey changes
 
   // Group models by provider
   const groupedModels = activeModels.reduce<GroupedModels>((acc, model) => {
@@ -187,6 +216,27 @@ export function ChatPage() {
     }
   };
 
+  const handleResizeStart = (e: React.MouseEvent) => {
+    setIsResizing(true);
+    resizeStartY.current = e.clientY;
+    resizeStartHeight.current = settingsHeight;
+    document.addEventListener('mousemove', handleResizeMove);
+    document.addEventListener('mouseup', handleResizeEnd);
+  };
+
+  const handleResizeMove = (e: MouseEvent) => {
+    if (!isResizing) return;
+    const deltaY = e.clientY - resizeStartY.current;
+    const newHeight = Math.max(100, Math.min(400, resizeStartHeight.current - deltaY));
+    setSettingsHeight(newHeight);
+  };
+
+  const handleResizeEnd = () => {
+    setIsResizing(false);
+    document.removeEventListener('mousemove', handleResizeMove);
+    document.removeEventListener('mouseup', handleResizeEnd);
+  };
+
   return (
     <div className="h-screen flex flex-col overflow-hidden bg-gray-50 dark:bg-gray-900">
       {/* Chat Header */}
@@ -273,8 +323,14 @@ export function ChatPage() {
       <div className="flex-none bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-6">
         <div className="max-w-3xl mx-auto">
           {/* Settings Panel */}
-          {showSettings && (
-            <div className="mb-4 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg p-4">
+          <div 
+            ref={settingsRef}
+            className={`transition-all duration-200 ease-in-out overflow-hidden ${
+              showSettings ? 'mb-4' : 'mb-0'
+            }`}
+            style={{ height: showSettings ? `${settingsHeight}px` : '0px' }}
+          >
+            <div className="bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg p-4 h-full overflow-y-auto">
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -297,7 +353,6 @@ export function ChatPage() {
                     onChange={(e) => {
                       const provider = e.target.value as LLMProvider;
                       setSelectedProvider(provider);
-                      // Reset selected model when provider changes
                       setSelectedModelId(null);
                     }}
                     className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
@@ -335,15 +390,23 @@ export function ChatPage() {
                 )}
               </div>
             </div>
-          )}
+            {showSettings && (
+              <div 
+                className="h-2 bg-gray-100 dark:bg-gray-600 cursor-ns-resize flex items-center justify-center"
+                onMouseDown={handleResizeStart}
+              >
+                <GripVertical className="w-4 h-4 text-gray-400" />
+              </div>
+            )}
+          </div>
 
-          <form onSubmit={handleSubmit} className="flex items-center space-x-4">
+          <form onSubmit={handleSubmit} className="flex items-center space-x-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-2">
             <button
               type="button"
               onClick={() => setShowSettings(!showSettings)}
-              className="p-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+              className="p-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
             >
-              <Settings size={20} />
+              {showSettings ? <Minimize2 size={20} /> : <Maximize2 size={20} />}
             </button>
             <input
               type="text"
@@ -356,7 +419,7 @@ export function ChatPage() {
             <button
               type="submit"
               disabled={!input.trim() || isSending || !apiKey.trim()}
-              className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 dark:hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 dark:hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {isSending ? "Sending..." : "Send"}
             </button>
