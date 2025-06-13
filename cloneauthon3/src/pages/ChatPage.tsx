@@ -188,13 +188,13 @@ export function ChatPage() {
   };
 
   return (
-    <div className="h-screen flex flex-col overflow-hidden">
+    <div className="h-screen flex flex-col overflow-hidden bg-gray-50 dark:bg-gray-900">
       {/* Chat Header */}
-      <div className="flex-none bg-white border-b border-gray-200 px-6 py-4">
+      <div className="flex-none bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-lg font-semibold text-gray-900">{chat.title}</h2>
-            <p className="text-sm text-gray-500">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{chat.title}</h2>
+            <p className="text-sm text-gray-500 dark:text-gray-400">
               Using {chat.model?.name || "Unknown Model"}
             </p>
           </div>
@@ -210,7 +210,7 @@ export function ChatPage() {
                     setSelectedProvider(model.provider as LLMProvider);
                   }
                 }}
-                className="px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
               >
                 <option value="">Select a model</option>
                 {activeModels.map((model) => (
@@ -228,7 +228,7 @@ export function ChatPage() {
       <div className="flex-1 overflow-y-auto p-6">
         <div className="max-w-3xl mx-auto space-y-6">
           {localMessages.length === 0 && (
-            <div className="text-center text-gray-500 py-12">
+            <div className="text-center text-gray-500 dark:text-gray-400 py-12">
               <p>Start a conversation with the AI!</p>
             </div>
           )}
@@ -244,7 +244,7 @@ export function ChatPage() {
                 className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
                   message.role === "user"
                     ? "bg-blue-600 text-white"
-                    : "bg-white border border-gray-200 text-gray-900"
+                    : "bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white"
                 }`}
               >
                 <p className="text-sm whitespace-pre-wrap">
@@ -254,9 +254,9 @@ export function ChatPage() {
                     <span className="inline-flex items-center space-x-1">
                       <span>AI is thinking</span>
                       <span className="flex space-x-1">
-                        <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
-                        <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
-                        <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
+                        <span className="w-1.5 h-1.5 bg-gray-400 dark:bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
+                        <span className="w-1.5 h-1.5 bg-gray-400 dark:bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
+                        <span className="w-1.5 h-1.5 bg-gray-400 dark:bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
                       </span>
                     </span>
                   ) : null)}
@@ -270,14 +270,14 @@ export function ChatPage() {
       </div>
 
       {/* Input Form with Settings */}
-      <div className="flex-none bg-white border-t border-gray-200 p-6">
+      <div className="flex-none bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-6">
         <div className="max-w-3xl mx-auto">
           {/* Settings Panel */}
           {showSettings && (
-            <div className="mb-4 bg-gray-50 border border-gray-200 rounded-lg p-4">
+            <div className="mb-4 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg p-4">
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     API Key
                   </label>
                   <input
@@ -285,11 +285,11 @@ export function ChatPage() {
                     value={apiKey}
                     onChange={(e) => setApiKey(e.target.value)}
                     placeholder="Enter your API key..."
-                    className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     AI Provider
                   </label>
                   <select
@@ -300,7 +300,7 @@ export function ChatPage() {
                       // Reset selected model when provider changes
                       setSelectedModelId(null);
                     }}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                   >
                     {Object.keys(groupedModels).map((provider) => (
                       <option key={provider} value={provider}>
@@ -311,13 +311,13 @@ export function ChatPage() {
                 </div>
                 {groupedModels[selectedProvider] && groupedModels[selectedProvider]!.length > 0 && (
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       Model
                     </label>
                     <select
                       value={selectedModelId || ""}
                       onChange={(e) => setSelectedModelId(e.target.value as Id<"aiModels">)}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                     >
                       <option value="">Select a model</option>
                       {groupedModels[selectedProvider]!.map((model) => (
@@ -327,7 +327,7 @@ export function ChatPage() {
                       ))}
                     </select>
                     {groupedModels[selectedProvider]!.find(m => m._id === selectedModelId)?.description && (
-                      <p className="mt-1 text-sm text-gray-500">
+                      <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
                         {groupedModels[selectedProvider]!.find(m => m._id === selectedModelId)?.description}
                       </p>
                     )}
@@ -341,7 +341,7 @@ export function ChatPage() {
             <button
               type="button"
               onClick={() => setShowSettings(!showSettings)}
-              className="p-2 text-gray-500 hover:text-gray-700"
+              className="p-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
             >
               <Settings size={20} />
             </button>
@@ -351,12 +351,12 @@ export function ChatPage() {
               onChange={(e) => setInput(e.target.value)}
               placeholder="Type your message..."
               disabled={isSending || !apiKey.trim()}
-              className="flex-1 px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
+              className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white disabled:opacity-50"
             />
             <button
               type="submit"
               disabled={!input.trim() || isSending || !apiKey.trim()}
-              className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 dark:hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isSending ? "Sending..." : "Send"}
             </button>
