@@ -1,13 +1,10 @@
 import { query, mutation, QueryCtx } from "./_generated/server";
 import { v } from "convex/values";
-import { getAuthUserId } from "@convex-dev/auth/server";
+import { getCurrentUserId } from "./auth";
 
 // Check if user is admin
 async function requireAdmin(ctx: QueryCtx) {
-  const userId = await getAuthUserId(ctx);
-  if (!userId) {
-    throw new Error("Not authenticated");
-  }
+  const userId = await getCurrentUserId(ctx);
   
   const userRole = await ctx.db
     .query("userRoles")

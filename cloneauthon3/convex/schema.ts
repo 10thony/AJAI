@@ -1,6 +1,5 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
-import { authTables } from "@convex-dev/auth/server";
 
 const applicationTables = {
   // AI Model configurations that admins can manage
@@ -23,18 +22,18 @@ const applicationTables = {
   }).index("by_provider", ["provider"])
     .index("by_active", ["isActive"]),
 
-  // User roles for admin access
+  // User roles for admin access - now using Clerk user IDs
   userRoles: defineTable({
-    userId: v.id("users"),
+    userId: v.string(), // Clerk user ID (string instead of Convex ID)
     role: v.union(v.literal("admin"), v.literal("user")),
     createdAt: v.number(), // Track when role was assigned
     updatedAt: v.number(), // Track when role was last updated
   }).index("by_user", ["userId"])
     .index("by_role", ["role"]),
 
-  // Chat conversations
+  // Chat conversations - now using Clerk user IDs
   chats: defineTable({
-    userId: v.id("users"),
+    userId: v.string(), // Clerk user ID (string instead of Convex ID)
     title: v.string(),
     modelId: v.id("aiModels"),
     isArchived: v.optional(v.boolean()),
@@ -50,7 +49,7 @@ const applicationTables = {
     chatId: v.id("chats"),
     content: v.string(),
     role: v.union(v.literal("user"), v.literal("assistant")),
-    userId: v.optional(v.id("users")), // null for AI messages
+    userId: v.optional(v.string()), // Clerk user ID (string instead of Convex ID) - null for AI messages
     createdAt: v.number(), // Track when message was created
     updatedAt: v.number(), // Track when message was last updated
     isStreaming: v.optional(v.boolean()), // Track if message is still being streamed
@@ -60,6 +59,5 @@ const applicationTables = {
 };
 
 export default defineSchema({
-  ...authTables,
   ...applicationTables,
 });

@@ -1,6 +1,6 @@
 import { query, mutation, action, internalQuery, internalMutation, internalAction } from "./_generated/server";
 import { v } from "convex/values";
-import { getAuthUserId } from "@convex-dev/auth/server";
+import { getCurrentUserId } from "./auth";
 import { api, internal } from "./_generated/api";
 import OpenAI from "openai";
 const client = new OpenAI();
@@ -9,10 +9,7 @@ const client = new OpenAI();
 export const list = query({
   args: { chatId: v.id("chats") },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
-      return [];
-    }
+    const userId = await getCurrentUserId(ctx);
     
     // Verify user owns the chat
     const chat = await ctx.db.get(args.chatId);
@@ -35,10 +32,7 @@ export const send = mutation({
     apiKey: v.string(),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
-      throw new Error("Not authenticated");
-    }
+    const userId = await getCurrentUserId(ctx);
     
     // Verify user owns the chat
     const chat = await ctx.db.get(args.chatId);
@@ -52,8 +46,8 @@ export const send = mutation({
       content: args.content,
       role: "user",
       userId,
-      createdAt: 0,
-      updatedAt: 0
+      createdAt: Date.now(),
+      updatedAt: Date.now()
     });
     
     // Create initial AI message for streaming
@@ -61,8 +55,8 @@ export const send = mutation({
       chatId: args.chatId,
       content: "",
       role: "assistant",
-      createdAt: 0,
-      updatedAt: 0
+      createdAt: Date.now(),
+      updatedAt: Date.now()
     });
     
     // Schedule AI response with API key

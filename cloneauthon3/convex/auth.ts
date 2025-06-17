@@ -1,22 +1,113 @@
-import { convexAuth, getAuthUserId } from "@convex-dev/auth/server";
-import { Password } from "@convex-dev/auth/providers/Password";
-import { Anonymous } from "@convex-dev/auth/providers/Anonymous";
-import { query } from "./_generated/server";
+import { query, mutation } from "./_generated/server";
+import { v } from "convex/values";
+import { ConvexError } from "convex/values";
 
-export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
-  providers: [Password, Anonymous],
+/**
+ * Get the current user's Clerk ID from the request context
+ * This function should be used in queries and mutations to get the authenticated user
+ */
+export const getCurrentUserId = async (ctx: any): Promise<string> => {
+  const identity = await ctx.auth.getUserIdentity();
+  if (!identity) {
+    throw new ConvexError("Not authenticated");
+  }
+  return identity.subject;
+};
+
+/**
+ * Query to get the current user's information
+ * Returns null if not authenticated
+ */
+export const getCurrentUser = query({
+  args: {},
+  returns: v.union(
+    v.object({
+      userId: v.string(),
+      email: v.optional(v.string()),
+      name: v.optional(v.string()),
+      imageUrl: v.optional(v.string()),
+    }),
+    v.null()
+  ),
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      return null;
+    }
+    
+    return {
+      userId: identity.subject,
+      email: identity.email,
+      name: identity.name,
+      imageUrl: identity.pictureUrl,
+    };
+  },
 });
 
-export const loggedInUser = query({
+/**
+ * Query to check if the current user has admin role
+ */
+export const isAdmin = query({
+  args: {},
+  returns: v.boolean(),
   handler: async (ctx) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
-      return null;
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      return false;
     }
-    const user = await ctx.db.get(userId);
-    if (!user) {
-      return null;
+    
+    const userRole = await ctx.db
+      .query("userRoles")
+      .withIndex("by_user", (q) => q.eq("userId", identity.subject))
+      .unique();
+    
+    return userRole?.role === "admin";
+  },
+});
+
+/**
+ * Mutation to assign a role to a user (admin only)
+ */
+export const assignUserRole = mutation({
+  args: {
+    userId: v.string(),
+    role: v.union(v.literal("admin"), v.literal("user")),
+  },
+  returns: v.boolean(),
+  handler: async (ctx, args) => {
+    // Check if current user is admin
+    const currentUserId = await getCurrentUserId(ctx);
+    const currentUserRole = await ctx.db
+      .query("userRoles")
+      .withIndex("by_user", (q) => q.eq("userId", currentUserId))
+      .unique();
+    
+    if (currentUserRole?.role !== "admin") {
+      return false;
     }
-    return user;
+    
+    // Check if user already has a role
+    const existingRole = await ctx.db
+      .query("userRoles")
+      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .unique();
+    
+    if (existingRole) {
+      // Update existing role
+      await ctx.db.patch(existingRole._id, {
+        role: args.role,
+        updatedAt: Date.now(),
+      });
+    } else {
+      // Create new role
+      await ctx.db.insert("userRoles", {
+        userId: args.userId,
+        role: args.role,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      });
+    }
+    
+    return true;
   },
 });

@@ -1,4 +1,4 @@
-import { Authenticated, Unauthenticated, useQuery } from "convex/react";
+import { useQuery } from "convex/react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { api } from "../convex/_generated/api";
 import { SignInForm } from "./SignInForm";
@@ -8,37 +8,41 @@ import { ChatPage } from "./pages/ChatPage";
 import { AdminPage } from "./pages/AdminPage";
 import { HomePage } from "./pages/HomePage";
 import TempChatPage from "./pages/TempChatPage";
-import { ConvexAuthProvider } from "@convex-dev/auth/react";
-import { ConvexReactClient } from "convex/react";
+import { useAuth } from "@clerk/clerk-react";
 import { ThemeProvider } from "./lib/ThemeContext";
-
-const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL as string);
 
 export default function App() {
   return (
     <ThemeProvider>
-      <ConvexAuthProvider client={convex}>
-        <Router>
-          <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-            <Routes>
-              <Route path="/temp-chat" element={<TempChatPage />} />
-              <Route path="*" element={
-                <>
-                  <Authenticated>
-                    <AuthenticatedApp />
-                  </Authenticated>
-                  <Unauthenticated>
-                    <UnauthenticatedApp />
-                  </Unauthenticated>
-                </>
-              } />
-            </Routes>
-            <Toaster />
-          </div>
-        </Router>
-      </ConvexAuthProvider>
+      <Router>
+        <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+          <Routes>
+            <Route path="/temp-chat" element={<TempChatPage />} />
+            <Route path="*" element={<AppContent />} />
+          </Routes>
+          <Toaster />
+        </div>
+      </Router>
     </ThemeProvider>
   );
+}
+
+function AppContent() {
+  const { isSignedIn, isLoaded } = useAuth();
+  
+  if (!isLoaded) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 dark:border-blue-400"></div>
+      </div>
+    );
+  }
+
+  if (!isSignedIn) {
+    return <UnauthenticatedApp />;
+  }
+
+  return <AuthenticatedApp />;
 }
 
 function AuthenticatedApp() {

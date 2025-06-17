@@ -14,9 +14,11 @@ global.fetch = vi.fn();
 // Mock chat and model data
 const mockChat = {
   _id: "chat_123" as Id<"chats">,
-  userId: "user_123" as Id<"users">,
+  userId: "clerk_user_123", // Clerk user ID (string)
   title: "Test Chat",
   modelId: "model_123" as Id<"aiModels">,
+  createdAt: Date.now(),
+  updatedAt: Date.now(),
 };
 
 const mockModel = {
@@ -26,6 +28,8 @@ const mockModel = {
   modelId: "gpt-4",
   apiKeyEnvVar: "OPENAI_API_KEY",
   isActive: true,
+  createdAt: Date.now(),
+  updatedAt: Date.now(),
 };
 
 // Mock messages
@@ -35,7 +39,9 @@ const mockMessages = [
     chatId: mockChat._id,
     content: "Hello",
     role: "user",
-    userId: "user_123" as Id<"users">,
+    userId: "clerk_user_123", // Clerk user ID (string)
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
   },
 ];
 
@@ -60,10 +66,11 @@ describe("Messages Module", () => {
     delete process.env.OPENAI_API_KEY;
 
     // Update the function calls to use proper typing
-    const generateResponse = internal.messages.generateAIResponse as unknown as (ctx: any, args: { chatId: Id<"chats">; messageId: Id<"messages">; }) => Promise<void>;
+    const generateResponse = internal.messages.generateAIResponse as unknown as (ctx: any, args: { chatId: Id<"chats">; messageId: Id<"messages">; apiKey: string; }) => Promise<void>;
     await generateResponse(mockCtx, {
       chatId: mockChat._id,
       messageId: "msg_2" as Id<"messages">,
+      apiKey: "test-key",
     });
 
     // Verify error message was set
@@ -95,10 +102,11 @@ describe("Messages Module", () => {
     });
 
     // Update the function calls to use proper typing
-    const generateResponse = internal.messages.generateAIResponse as unknown as (ctx: any, args: { chatId: Id<"chats">; messageId: Id<"messages">; }) => Promise<void>;
+    const generateResponse = internal.messages.generateAIResponse as unknown as (ctx: any, args: { chatId: Id<"chats">; messageId: Id<"messages">; apiKey: string; }) => Promise<void>;
     await generateResponse(mockCtx, {
       chatId: mockChat._id,
       messageId: "msg_2" as Id<"messages">,
+      apiKey: "test-key",
     });
 
     // Verify error message was set
@@ -138,10 +146,11 @@ describe("Messages Module", () => {
     (global.fetch as any).mockResolvedValueOnce(mockResponse);
 
     // Update the function calls to use proper typing
-    const generateResponse = internal.messages.generateAIResponse as unknown as (ctx: any, args: { chatId: Id<"chats">; messageId: Id<"messages">; }) => Promise<void>;
+    const generateResponse = internal.messages.generateAIResponse as unknown as (ctx: any, args: { chatId: Id<"chats">; messageId: Id<"messages">; apiKey: string; }) => Promise<void>;
     await generateResponse(mockCtx, {
       chatId: mockChat._id,
       messageId: "msg_2" as Id<"messages">,
+      apiKey: "test-key",
     });
 
     // Verify message was updated with content
@@ -170,10 +179,11 @@ describe("Messages Module", () => {
     };
 
     // Update the function calls to use proper typing
-    const generateResponse = internal.messages.generateAIResponse as unknown as (ctx: any, args: { chatId: Id<"chats">; messageId: Id<"messages">; }) => Promise<void>;
+    const generateResponse = internal.messages.generateAIResponse as unknown as (ctx: any, args: { chatId: Id<"chats">; messageId: Id<"messages">; apiKey: string; }) => Promise<void>;
     await generateResponse(mockCtx, {
       chatId: mockChat._id,
       messageId: "msg_2" as Id<"messages">,
+      apiKey: "test-key",
     });
 
     // Verify error message was set
