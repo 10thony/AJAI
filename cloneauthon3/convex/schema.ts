@@ -56,6 +56,24 @@ const applicationTables = {
     error: v.optional(v.string()), // Store any error messages
   }).index("by_chat", ["chatId"])
     .index("by_creation", ["createdAt"]), // For sorting messages chronologically
+
+  // Logs for tracking user actions and errors
+  logs: defineTable({
+    userId: v.string(), // Clerk user ID
+    action: v.string(),
+    type: v.union(v.literal("action"), v.literal("error")),
+    details: v.object({
+      provider: v.optional(v.string()),
+      model: v.optional(v.string()),
+      messageId: v.optional(v.id("messages")),
+      errorMessage: v.optional(v.string()),
+      stackTrace: v.optional(v.string()),
+      metadata: v.optional(v.any()),
+    }),
+    createdAt: v.number(), // Track when log was created
+  }).index("by_user", ["userId"])
+    .index("by_type", ["type"])
+    .index("by_creation", ["createdAt"]), // For sorting logs chronologically
 };
 
 export default defineSchema({
