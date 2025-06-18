@@ -1,10 +1,10 @@
-import { useQuery, useAction } from "convex/react";
+import { useQuery, useMutation, useAction } from "convex/react";
 import { useParams, Navigate } from "react-router-dom";
 import { api } from "../../convex/_generated/api";
 import { useState, useRef, useEffect } from "react";
 import { Id } from "../../convex/_generated/dataModel";
 import Anthropic from "@anthropic-ai/sdk";
-import { Settings, Maximize2, Minimize2, GripVertical } from "lucide-react";
+import { Settings, Maximize2, Minimize2, GripVertical, RefreshCw } from "lucide-react";
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { HelpWidget } from "../components/HelpWidget";
@@ -15,7 +15,7 @@ type Message = {
   chatId: Id<"chats">;
   content: string;
   role: "user" | "assistant";
-  userId?: Id<"users">;
+  userId?: string;
 };
 
 type LocalMessage = {
@@ -27,13 +27,14 @@ type LocalMessage = {
 // Make LLMProvider dynamic based on available providers
 type LLMProvider = string;
 
+type DynamicModel = {
+  id: string;
+  name: string;
+  description?: string;
+};
+
 type GroupedModels = {
-  [key: string]: {
-    _id: Id<"aiModels">;
-    name: string;
-    modelId: string;
-    description?: string;
-  }[];
+  [key: string]: DynamicModel[];
 };
 
 function formatMessageContent(content: string) {
@@ -69,73 +70,89 @@ export function ChatPage() {
   const { chatId } = useParams<{ chatId: string }>();
   const chat = useQuery(api.chats.get, chatId ? { id: chatId as Id<"chats"> } : "skip");
   const messages = useQuery(api.messages.list, chatId ? { chatId: chatId as Id<"chats"> } : "skip");
-  const sendMessage = useAction(api.chat.sendMessage);
-  const activeModels = useQuery(api.aiModels.listActive) || [];
+  const sendMessage = useMutation(api.messages.send);
+  const fetchModelsForProvider = useAction(api.chat.fetchModelsForProvider);
   
   const [input, setInput] = useState("");
   const [apiKey, setApiKey] = useState("");
-  const [isSending, setIsSending] = useState(false);
   const [localMessages, setLocalMessages] = useState<(Message | LocalMessage)[]>([]);
   const [selectedProvider, setSelectedProvider] = useState<LLMProvider>("anthropic");
   const [showSettings, setShowSettings] = useState(true);
-  const [selectedModelId, setSelectedModelId] = useState<Id<"aiModels"> | null>(null);
+  const [selectedModelId, setSelectedModelId] = useState<string | null>(null);
+  const [dynamicModels, setDynamicModels] = useState<GroupedModels>({});
+  const [isLoadingModels, setIsLoadingModels] = useState(false);
+  const [modelError, setModelError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [settingsHeight, setSettingsHeight] = useState(200); // Default height for settings panel
   const [isResizing, setIsResizing] = useState(false);
   const settingsRef = useRef<HTMLDivElement>(null);
   const resizeStartY = useRef<number>(0);
   const resizeStartHeight = useRef<number>(0);
+  const [isAIGenerating, setIsAIGenerating] = useState(false);
 
-  // Add useEffect for fetching Anthropic models
-  useEffect(() => {
-    const fetchAnthropicModels = async () => {
-      if (!apiKey) return; // Only fetch if we have an API key
+  // Function to fetch models for a specific provider
+  const fetchModels = async (provider: string, key: string) => {
+    if (!key.trim()) return;
+    
+    setIsLoadingModels(true);
+    setModelError(null);
+    
+    try {
+      const models = await fetchModelsForProvider({
+        provider,
+        apiKey: key
+      });
       
-      try {
-        const anthropic = new Anthropic({
-          apiKey: apiKey,
-          dangerouslyAllowBrowser: true
-        });
-        
-        const anthropicModels = await anthropic.models.list({
-          limit: 20,
-        });
-        
-        console.log("Available Anthropic Models:", anthropicModels);
-      } catch (error) {
-        console.error("Error fetching Anthropic models:", error);
+      setDynamicModels(prev => ({
+        ...prev,
+        [provider]: models
+      }));
+      
+      // Clear any previous model selection if it's no longer available
+      if (selectedModelId && !models.find(m => m.id === selectedModelId)) {
+        setSelectedModelId(null);
       }
-    };
-
-    fetchAnthropicModels();
-  }, [apiKey]); // Re-run when apiKey changes
-
-  // Group models by provider
-  const groupedModels = activeModels.reduce<GroupedModels>((acc, model) => {
-    const provider = model.provider as LLMProvider;
-    if (!acc[provider]) {
-      acc[provider] = [];
+    } catch (error: any) {
+      console.error(`Error fetching ${provider} models:`, error);
+      setModelError(`Failed to fetch ${provider} models: ${error.message}`);
+      setDynamicModels(prev => ({
+        ...prev,
+        [provider]: []
+      }));
+      // Clear model selection on error
+      setSelectedModelId(null);
+    } finally {
+      setIsLoadingModels(false);
     }
-    acc[provider]?.push({
-      _id: model._id,
-      name: model.name,
-      modelId: model.modelId,
-      description: model.description,
-    });
-    return acc;
-  }, {});
+  };
+
+  // Fetch models when API key or provider changes
+  useEffect(() => {
+    if (apiKey.trim() && selectedProvider) {
+      fetchModels(selectedProvider, apiKey);
+    } else {
+      // Clear models when API key is empty
+      setDynamicModels(prev => ({
+        ...prev,
+        [selectedProvider]: []
+      }));
+      setSelectedModelId(null);
+    }
+  }, [apiKey, selectedProvider]);
 
   // Set initial model when chat loads
   useEffect(() => {
-    if (chat && activeModels.length > 0) {
-      setSelectedModelId(chat.modelId);
-      // Set provider based on the selected model
-      const selectedModel = activeModels.find(m => m._id === chat.modelId);
-      if (selectedModel) {
-        setSelectedProvider(selectedModel.provider);
+    if (chat && dynamicModels[selectedProvider]?.length > 0) {
+      // Try to find a model that matches the chat's modelId
+      const matchingModel = dynamicModels[selectedProvider]?.find(m => m.id === chat.modelId);
+      if (matchingModel) {
+        setSelectedModelId(matchingModel.id);
+      } else if (dynamicModels[selectedProvider]?.length > 0) {
+        // Fall back to first available model
+        setSelectedModelId(dynamicModels[selectedProvider][0].id);
       }
     }
-  }, [chat, activeModels]);
+  }, [chat, dynamicModels, selectedProvider]);
 
   // Mirror convex messages to local state
   useEffect(() => {
@@ -147,6 +164,16 @@ export function ChatPage() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [localMessages]);
+
+  // Check if AI is currently generating a response
+  useEffect(() => {
+    if (messages) {
+      const hasEmptyAssistantMessage = messages.some(msg => 
+        msg.role === "assistant" && (!msg.content || msg.content.trim() === "")
+      );
+      setIsAIGenerating(hasEmptyAssistantMessage);
+    }
+  }, [messages]);
 
   // Define help content with provider-specific and model-specific links
   const helpContent = {
@@ -247,40 +274,25 @@ export function ChatPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim() || isSending || !apiKey.trim() || !selectedModelId) return;
+    if (!input.trim() || isAIGenerating || !apiKey.trim() || !selectedModelId || !chatId) return;
 
     const messageContent = input.trim();
     setInput("");
-    setIsSending(true);
-
-    // Add user message to local state
-    const userMsg: LocalMessage = {
-      role: "user",
-      content: messageContent,
-      createdAt: Date.now(),
-    };
-    setLocalMessages(prev => [...prev, userMsg]);
 
     try {
-      // Send message using the selected model
-      const response = await sendMessage({
-        message: messageContent,
-        modelId: selectedModelId,
-        apiKey: apiKey
+      // Send message using the streaming backend
+      await sendMessage({
+        chatId: chatId as Id<"chats">,
+        content: messageContent,
+        apiKey: apiKey,
+        modelId: selectedModelId
       });
 
-      // Add AI response to local state
-      const aiMsg: LocalMessage = {
-        role: "assistant",
-        content: response,
-        createdAt: Date.now(),
-      };
-      setLocalMessages(prev => [...prev, aiMsg]);
+      // The AI response will be automatically updated in real-time through the messages query
+      // which will reflect the streaming updates from the backend
     } catch (error) {
       console.error("Failed to send message:", error);
       setInput(messageContent); // Restore input on error
-    } finally {
-      setIsSending(false);
     }
   };
 
@@ -305,6 +317,12 @@ export function ChatPage() {
     document.removeEventListener('mouseup', handleResizeEnd);
   };
 
+  const handleRefreshModels = () => {
+    if (apiKey.trim() && selectedProvider) {
+      fetchModels(selectedProvider, apiKey);
+    }
+  };
+
   return (
     <div className="h-screen flex flex-col overflow-hidden bg-gray-50 dark:bg-gray-900">
       {/* Chat Header */}
@@ -313,27 +331,23 @@ export function ChatPage() {
           <div>
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{chat.title}</h2>
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              Using {chat.model?.name || "Unknown Model"}
+              Using {selectedModelId || "No model selected"}
             </p>
           </div>
           <div className="flex items-center space-x-4">
-            {activeModels.length > 0 && (
+            {dynamicModels[selectedProvider] && dynamicModels[selectedProvider].length > 0 && (
               <select
                 value={selectedModelId || ""}
                 onChange={(e) => {
-                  const modelId = e.target.value as Id<"aiModels">;
+                  const modelId = e.target.value;
                   setSelectedModelId(modelId);
-                  const model = activeModels.find(m => m._id === modelId);
-                  if (model) {
-                    setSelectedProvider(model.provider);
-                  }
                 }}
                 className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
               >
                 <option value="">Select a model</option>
-                {activeModels.map((model) => (
-                  <option key={model._id} value={model._id}>
-                    {model.name} ({model.provider})
+                {dynamicModels[selectedProvider].map((model) => (
+                  <option key={model.id} value={model.id}>
+                    {model.name}
                   </option>
                 ))}
               </select>
@@ -368,7 +382,7 @@ export function ChatPage() {
                 <p className="text-sm whitespace-pre-wrap">
                   {message.content ? (
                     formatMessageContent(message.content)
-                  ) : (message.role === "assistant" && isSending ? (
+                  ) : (message.role === "assistant" ? (
                     <span className="inline-flex items-center space-x-1">
                       <span>AI is thinking</span>
                       <span className="flex space-x-1">
@@ -425,37 +439,73 @@ export function ChatPage() {
                     }}
                     className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                   >
-                    {Object.keys(groupedModels).map((provider) => (
-                      <option key={provider} value={provider}>
-                        {provider.charAt(0).toUpperCase() + provider.slice(1)}
-                      </option>
-                    ))}
+                    <option value="anthropic">Anthropic</option>
+                    <option value="openai">OpenAI</option>
+                    <option value="google">Google</option>
+                    <option value="huggingface">Hugging Face</option>
                   </select>
                 </div>
-                {groupedModels[selectedProvider] && groupedModels[selectedProvider]!.length > 0 && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Model
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Available Models
                     </label>
+                    <button
+                      type="button"
+                      onClick={handleRefreshModels}
+                      disabled={isLoadingModels || !apiKey.trim()}
+                      className="p-1 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"
+                    >
+                      <RefreshCw size={16} className={isLoadingModels ? "animate-spin" : ""} />
+                    </button>
+                  </div>
+                  {isLoadingModels && (
+                    <div className="text-sm text-gray-500 dark:text-gray-400 mb-2">
+                      Loading models...
+                    </div>
+                  )}
+                  {modelError && (
+                    <div className="text-sm text-red-500 dark:text-red-400 mb-2">
+                      {modelError}
+                    </div>
+                  )}
+                  {dynamicModels[selectedProvider] && dynamicModels[selectedProvider].length > 0 && (
                     <select
                       value={selectedModelId || ""}
-                      onChange={(e) => setSelectedModelId(e.target.value as Id<"aiModels">)}
+                      onChange={(e) => setSelectedModelId(e.target.value)}
                       className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                     >
                       <option value="">Select a model</option>
-                      {groupedModels[selectedProvider]!.map((model) => (
-                        <option key={model._id} value={model._id}>
-                          {model.name} ({model.modelId})
+                      {dynamicModels[selectedProvider].map((model) => (
+                        <option key={model.id} value={model.id}>
+                          {model.name}
                         </option>
                       ))}
                     </select>
-                    {groupedModels[selectedProvider]!.find(m => m._id === selectedModelId)?.description && (
-                      <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                        {groupedModels[selectedProvider]!.find(m => m._id === selectedModelId)?.description}
-                      </p>
-                    )}
-                  </div>
-                )}
+                  )}
+                  {dynamicModels[selectedProvider] && dynamicModels[selectedProvider].length === 0 && !isLoadingModels && !modelError && (
+                    <div className="text-sm text-gray-500 dark:text-gray-400">
+                      {apiKey.trim() ? (
+                        <div>
+                          <p>No models available for your API key.</p>
+                          <p className="mt-1">This could mean:</p>
+                          <ul className="mt-1 ml-4 list-disc">
+                            <li>Your subscription doesn't include these models</li>
+                            <li>Your API key has restricted access</li>
+                            <li>The service is temporarily unavailable</li>
+                          </ul>
+                        </div>
+                      ) : (
+                        "Enter your API key to see available models."
+                      )}
+                    </div>
+                  )}
+                  {selectedModelId && dynamicModels[selectedProvider]?.find(m => m.id === selectedModelId)?.description && (
+                    <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                      {dynamicModels[selectedProvider].find(m => m.id === selectedModelId)?.description}
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
             {showSettings && (
@@ -481,15 +531,15 @@ export function ChatPage() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder="Type your message..."
-              disabled={isSending || !apiKey.trim()}
+              disabled={isAIGenerating || !apiKey.trim() || !selectedModelId}
               className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white disabled:opacity-50"
             />
             <button
               type="submit"
-              disabled={!input.trim() || isSending || !apiKey.trim()}
+              disabled={!input.trim() || isAIGenerating || !apiKey.trim() || !selectedModelId}
               className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 dark:hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              {isSending ? "Sending..." : "Send"}
+              {isAIGenerating ? "AI is responding..." : "Send"}
             </button>
           </form>
         </div>
@@ -499,7 +549,7 @@ export function ChatPage() {
       <HelpWidget 
         content={helpContent}
         selectedProvider={selectedProvider}
-        selectedModelId={selectedModelId}
+        selectedModelId={selectedModelId === null ? undefined : selectedModelId}
       />
     </div>
   );

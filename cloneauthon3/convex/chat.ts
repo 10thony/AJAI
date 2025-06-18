@@ -6,6 +6,19 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import { internal, api } from "./_generated/api";
 import { Doc } from "./_generated/dataModel";
 
+// Initialize Anthropic client
+const anthropic = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY!,
+});
+
+// Initialize OpenAI client
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY!,
+});
+
+// Initialize Google AI client
+const genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_API_KEY!);
+
 // Available models for each provider
 const OPENAI_MODELS = {
   "gpt-4-turbo-preview": "GPT-4 Turbo (Latest)",
@@ -35,28 +48,16 @@ const HUGGINGFACE_MODELS = {
   "bigscience/bloom": "BLOOM",
 } as const;
 
-// Initialize Anthropic client
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY!,
-});
-
-// Initialize OpenAI client
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY!,
-});
-
-// Initialize Google AI client
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_API_KEY!);
-
 export const sendAnthropicMessage = action({
   args: {
     message: v.string(),
+    modelId: v.string(),
   },
   returns: v.string(),
   handler: async (ctx, args) => {
     try {
       const msg = await anthropic.messages.create({
-        model: "claude-3-5-sonnet-20241022",
+        model: args.modelId,
         max_tokens: 1024,
         messages: [
           {
@@ -78,22 +79,35 @@ export const sendAnthropicMessage = action({
   },
 });
 
+// Helper function to determine the correct token parameter for OpenAI models
+const getOpenAITokenParameter = (modelId: string) => {
+  // o3 models use max_completion_tokens instead of max_tokens
+  if (modelId.startsWith("o3-")) {
+    return { max_completion_tokens: 1024 };
+  }
+  // All other models use max_tokens
+  return { max_tokens: 1024 };
+};
+
 export const sendOpenAIMessage = action({
   args: {
     message: v.string(),
+    modelId: v.string(),
   },
   returns: v.string(),
   handler: async (ctx, args) => {
     try {
+      const tokenParameter = getOpenAITokenParameter(args.modelId);
+      
       const completion = await openai.chat.completions.create({
-        model: "o3-mini",
+        model: args.modelId,
         messages: [
           {
             role: "user",
             content: args.message,
           },
         ],
-        max_completion_tokens: 1024,
+        ...tokenParameter,
       });
 
       const assistantResponse = completion.choices[0]?.message?.content || "No response.";
@@ -105,23 +119,60 @@ export const sendOpenAIMessage = action({
   },
 });
 
+// Helper function to send OpenAI message with custom API key and model
+const sendOpenAIMessageWithKey = async (message: string, modelId: string, apiKey: string) => {
+  const tokenParameter = getOpenAITokenParameter(modelId);
+  
+  const response = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: modelId,
+      messages: [
+        {
+          role: "user",
+          content: message,
+        },
+      ],
+      ...tokenParameter,
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(`OpenAI API error: ${error.error?.message || response.statusText}`);
+  }
+
+  const data = await response.json();
+  return data.choices[0]?.message?.content || "No response.";
+};
+
 // Send message to Hugging Face model
 export const sendHuggingFaceMessage = action({
-  args: { message: v.string() },
+  args: { 
+    message: v.string(),
+    modelId: v.string(),
+  },
   returns: v.string(),
   handler: async (ctx, args) => {
     // For now, return a mock response
-    return `[Hugging Face] I received your message: "${args.message}"`;
+    return `[Hugging Face - ${args.modelId}] I received your message: "${args.message}"`;
   },
 });
 
 // Send message to Gemini AI
 export const sendGeminiMessage = action({
-  args: { message: v.string() },
+  args: { 
+    message: v.string(),
+    modelId: v.string(),
+  },
   returns: v.string(),
   handler: async (ctx, args) => {
     try {
-      const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+      const model = genAI.getGenerativeModel({ model: args.modelId });
       
       const result = await model.generateContent(args.message);
       const response = await result.response;
@@ -166,38 +217,41 @@ export const getModelInfo = internalQuery({
 export const sendMessage = action({
   args: {
     message: v.string(),
-    modelId: v.id("aiModels"),
+    modelId: v.string(),
     apiKey: v.string(),
   },
   returns: v.string(),
   handler: async (ctx, args) => {
-    // Get model info
-    const model = await ctx.runQuery(internal.chat.getModelInfo, {
-      modelId: args.modelId,
-    });
-    
-    if (!model) {
-      throw new Error("Model not found");
-    }
-
     try {
+      // Determine provider from model ID
+      let provider: string;
+      if (args.modelId.startsWith("gpt-") || args.modelId.startsWith("o1-") || args.modelId.startsWith("o2-") || args.modelId.startsWith("o3-")) {
+        provider = "openai";
+      } else if (args.modelId.startsWith("claude-")) {
+        provider = "anthropic";
+      } else if (args.modelId.startsWith("gemini-")) {
+        provider = "google";
+      } else {
+        provider = "huggingface"; // Default for other models
+      }
+
       // Call the appropriate model API based on provider
       let response: string;
-      switch (model.provider) {
+      switch (provider) {
         case "openai":
-          response = await ctx.runAction(api.chat.sendOpenAIMessage, { message: args.message });
+          response = await sendOpenAIMessageWithKey(args.message, args.modelId, args.apiKey);
           break;
         case "anthropic":
-          response = await ctx.runAction(api.chat.sendAnthropicMessage, { message: args.message });
+          response = await sendAnthropicMessageWithKey(args.message, args.modelId, args.apiKey);
           break;
         case "huggingface":
-          response = await ctx.runAction(api.chat.sendHuggingFaceMessage, { message: args.message });
+          response = await sendHuggingFaceMessageWithKey(args.message, args.modelId, args.apiKey);
           break;
         case "google":
-          response = await ctx.runAction(api.chat.sendGeminiMessage, { message: args.message });
+          response = await sendGeminiMessageWithKey(args.message, args.modelId, args.apiKey);
           break;
         default:
-          throw new Error(`Unsupported provider: ${model.provider}. Please contact support.`);
+          throw new Error(`Unsupported provider: ${provider}. Please contact support.`);
       }
       
       return response;
@@ -208,6 +262,94 @@ export const sendMessage = action({
   },
 });
 
+// Helper function to send Anthropic message with custom API key and model
+const sendAnthropicMessageWithKey = async (message: string, modelId: string, apiKey: string) => {
+  const response = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "x-api-key": apiKey,
+      "Content-Type": "application/json",
+      "anthropic-version": "2023-06-01",
+    },
+    body: JSON.stringify({
+      model: modelId,
+      max_tokens: 1024,
+      messages: [
+        {
+          role: "user",
+          content: message,
+        },
+      ],
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(`Anthropic API error: ${error.error?.message || response.statusText}`);
+  }
+
+  const data = await response.json();
+  return data.content[0]?.type === "text" ? data.content[0].text : "No text response.";
+};
+
+// Helper function to send Google message with custom API key and model
+const sendGeminiMessageWithKey = async (message: string, modelId: string, apiKey: string) => {
+  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent?key=${apiKey}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      contents: [
+        {
+          parts: [
+            {
+              text: message,
+            },
+          ],
+        },
+      ],
+      generationConfig: {
+        maxOutputTokens: 1024,
+      },
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(`Google AI API error: ${error.error?.message || response.statusText}`);
+  }
+
+  const data = await response.json();
+  return data.candidates[0]?.content?.parts[0]?.text || "No response.";
+};
+
+// Helper function to send Hugging Face message with custom API key and model
+const sendHuggingFaceMessageWithKey = async (message: string, modelId: string, apiKey: string) => {
+  const response = await fetch(`https://api-inference.huggingface.co/models/${modelId}`, {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      inputs: message,
+      parameters: {
+        max_new_tokens: 1024,
+        temperature: 0.7,
+      },
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(`Hugging Face API error: ${error.error || response.statusText}`);
+  }
+
+  const data = await response.json();
+  return data[0]?.generated_text || "No response.";
+};
+
 // Fetch available models from OpenAI
 const fetchOpenAIModels = async (apiKey: string) => {
   const response = await fetch("https://api.openai.com/v1/models", {
@@ -217,15 +359,25 @@ const fetchOpenAIModels = async (apiKey: string) => {
   });
   
   if (!response.ok) {
-    throw new Error(`OpenAI API error: ${response.status}`);
+    if (response.status === 401) {
+      throw new Error("Invalid API key. Please check your OpenAI API key.");
+    } else if (response.status === 403) {
+      throw new Error("API key doesn't have access to models. Please check your OpenAI subscription.");
+    } else {
+      throw new Error(`OpenAI API error: ${response.status} - ${response.statusText}`);
+    }
   }
   
   const data = await response.json();
-  const models: Record<string, string> = {};
+  const models: Array<{id: string, name: string, description?: string}> = [];
   
   for (const model of data.data) {
-    if (model.id.startsWith("gpt-")) {
-      models[model.id] = model.id;
+    if (model.id.startsWith("gpt-") || model.id.startsWith("o1-") || model.id.startsWith("o2-") || model.id.startsWith("o3-")) {
+      models.push({
+        id: model.id,
+        name: model.id,
+        description: model.description || undefined
+      });
     }
   }
   
@@ -241,15 +393,25 @@ const fetchAnthropicModels = async (apiKey: string) => {
   });
   
   if (!response.ok) {
-    throw new Error(`Anthropic API error: ${response.status}`);
+    if (response.status === 401) {
+      throw new Error("Invalid API key. Please check your Anthropic API key.");
+    } else if (response.status === 403) {
+      throw new Error("API key doesn't have access to models. Please check your Anthropic subscription.");
+    } else {
+      throw new Error(`Anthropic API error: ${response.status} - ${response.statusText}`);
+    }
   }
   
   const data = await response.json();
-  const models: Record<string, string> = {};
+  const models: Array<{id: string, name: string, description?: string}> = [];
   
   for (const model of data.models) {
     if (model.id.startsWith("claude-")) {
-      models[model.id] = model.id;
+      models.push({
+        id: model.id,
+        name: model.id,
+        description: model.description || undefined
+      });
     }
   }
   
@@ -265,21 +427,105 @@ const fetchGoogleModels = async (apiKey: string) => {
   });
   
   if (!response.ok) {
-    throw new Error(`Google AI API error: ${response.status}`);
+    if (response.status === 400) {
+      throw new Error("Invalid API key. Please check your Google AI API key.");
+    } else if (response.status === 403) {
+      throw new Error("API key doesn't have access to models. Please check your Google AI API access.");
+    } else {
+      throw new Error(`Google AI API error: ${response.status} - ${response.statusText}`);
+    }
   }
   
   const data = await response.json();
-  const models: Record<string, string> = {};
+  const models: Array<{id: string, name: string, description?: string}> = [];
   
   for (const model of data.models) {
     if (model.name.startsWith("models/gemini-")) {
       const modelId = model.name.replace("models/", "");
-      models[modelId] = modelId;
+      models.push({
+        id: modelId,
+        name: modelId,
+        description: model.description || undefined
+      });
     }
   }
   
   return models;
 };
+
+// Fetch available models from Hugging Face
+const fetchHuggingFaceModels = async (apiKey: string) => {
+  const response = await fetch("https://huggingface.co/api/models?filter=text-generation&sort=downloads&direction=-1&limit=50", {
+    headers: {
+      "Authorization": `Bearer ${apiKey}`,
+    },
+  });
+  
+  if (!response.ok) {
+    if (response.status === 401) {
+      throw new Error("Invalid API key. Please check your Hugging Face API key.");
+    } else if (response.status === 403) {
+      throw new Error("API key doesn't have access to models. Please check your Hugging Face access permissions.");
+    } else {
+      throw new Error(`Hugging Face API error: ${response.status} - ${response.statusText}`);
+    }
+  }
+  
+  const data = await response.json();
+  const models: Array<{id: string, name: string, description?: string}> = [];
+  
+  for (const model of data) {
+    if (model.modelId && model.downloads > 1000) { // Only include popular models
+      models.push({
+        id: model.modelId,
+        name: model.modelId,
+        description: model.description || undefined
+      });
+    }
+  }
+  
+  return models;
+};
+
+// Action to fetch models for a specific provider using user's API key
+export const fetchModelsForProvider = action({
+  args: {
+    provider: v.string(),
+    apiKey: v.string(),
+  },
+  returns: v.array(v.object({
+    id: v.string(),
+    name: v.string(),
+    description: v.optional(v.string()),
+  })),
+  handler: async (ctx, args) => {
+    try {
+      let models: Array<{id: string, name: string, description?: string}> = [];
+      
+      switch (args.provider) {
+        case "openai":
+          models = await fetchOpenAIModels(args.apiKey);
+          break;
+        case "anthropic":
+          models = await fetchAnthropicModels(args.apiKey);
+          break;
+        case "google":
+          models = await fetchGoogleModels(args.apiKey);
+          break;
+        case "huggingface":
+          models = await fetchHuggingFaceModels(args.apiKey);
+          break;
+        default:
+          throw new Error(`Unsupported provider: ${args.provider}`);
+      }
+      
+      return models;
+    } catch (error: any) {
+      console.error(`Error fetching ${args.provider} models:`, error);
+      throw new Error(`Failed to fetch ${args.provider} models: ${error.message}`);
+    }
+  },
+});
 
 // Action to fetch models from all providers
 export const fetchAvailableModels = internalAction({
@@ -289,10 +535,26 @@ export const fetchAvailableModels = internalAction({
     googleKey: v.string(),
   },
   returns: v.object({
-    openai: v.record(v.string(), v.string()),
-    anthropic: v.record(v.string(), v.string()),
-    google: v.record(v.string(), v.string()),
-    huggingface: v.record(v.string(), v.string()),
+    openai: v.array(v.object({
+      id: v.string(),
+      name: v.string(),
+      description: v.optional(v.string()),
+    })),
+    anthropic: v.array(v.object({
+      id: v.string(),
+      name: v.string(),
+      description: v.optional(v.string()),
+    })),
+    google: v.array(v.object({
+      id: v.string(),
+      name: v.string(),
+      description: v.optional(v.string()),
+    })),
+    huggingface: v.array(v.object({
+      id: v.string(),
+      name: v.string(),
+      description: v.optional(v.string()),
+    })),
   }),
   handler: async (ctx, args) => {
     try {
@@ -306,7 +568,7 @@ export const fetchAvailableModels = internalAction({
         openai: openaiModels,
         anthropic: anthropicModels,
         google: googleModels,
-        huggingface: HUGGINGFACE_MODELS, // Keep this static for now as Hugging Face requires different auth
+        huggingface: [], // Will be fetched separately when needed
       };
     } catch (error: any) {
       console.error("Error fetching models:", error);
@@ -319,16 +581,32 @@ export const fetchAvailableModels = internalAction({
 export const getAvailableModels = action({
   args: {},
   returns: v.object({
-    openai: v.record(v.string(), v.string()),
-    anthropic: v.record(v.string(), v.string()),
-    google: v.record(v.string(), v.string()),
-    huggingface: v.record(v.string(), v.string()),
+    openai: v.array(v.object({
+      id: v.string(),
+      name: v.string(),
+      description: v.optional(v.string()),
+    })),
+    anthropic: v.array(v.object({
+      id: v.string(),
+      name: v.string(),
+      description: v.optional(v.string()),
+    })),
+    google: v.array(v.object({
+      id: v.string(),
+      name: v.string(),
+      description: v.optional(v.string()),
+    })),
+    huggingface: v.array(v.object({
+      id: v.string(),
+      name: v.string(),
+      description: v.optional(v.string()),
+    })),
   }),
   handler: async (ctx): Promise<{
-    openai: Record<string, string>;
-    anthropic: Record<string, string>;
-    google: Record<string, string>;
-    huggingface: Record<string, string>;
+    openai: Array<{id: string, name: string, description?: string}>;
+    anthropic: Array<{id: string, name: string, description?: string}>;
+    google: Array<{id: string, name: string, description?: string}>;
+    huggingface: Array<{id: string, name: string, description?: string}>;
   }> => {
     // Get API keys from environment variables
     const openaiKey = process.env.OPENAI_API_KEY;

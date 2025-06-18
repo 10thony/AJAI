@@ -2,12 +2,22 @@
 import { v } from "convex/values";
 import { mutation } from "./_generated/server";
 
+// Helper function to determine the correct token parameter for OpenAI models
+const getOpenAITokenParameter = (modelId: string) => {
+  // o3 models use max_completion_tokens instead of max_tokens
+  if (modelId.startsWith("o3-")) {
+    return { max_completion_tokens: 150 };
+  }
+  // All other models use max_tokens
+  return { max_tokens: 150 };
+};
+
 export const chatCompletion = mutation({
   args: {
     prompt: v.string(),
     model: v.optional(v.string()), // Make model optional with a default value
   },
-  handler: async (ctx, { prompt, model = "gpt-o3-mini" }) => {
+  handler: async (ctx, { prompt, model = "o3-mini" }) => {
     // 1. Get your API key from environment variables
     const openAiApiKey = process.env.OPENAI_API_KEY;
 
@@ -16,6 +26,8 @@ export const chatCompletion = mutation({
     }
 
     try {
+      const tokenParameter = getOpenAITokenParameter(model);
+      
       // 2. Make the request to OpenAI's Chat Completions API
       const response = await fetch("https://api.openai.com/v1/chat/completions", {
         method: "POST",
@@ -26,7 +38,7 @@ export const chatCompletion = mutation({
         body: JSON.stringify({
           model: model,
           messages: [{ role: "user", content: prompt }],
-          max_tokens: 150, // Adjust as needed
+          ...tokenParameter,
           temperature: 0.7, // Adjust as needed
         }),
       });

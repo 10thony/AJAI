@@ -112,6 +112,15 @@ export const seedModels = mutation({
     if (existing.length > 0) return;
 
     const models = [
+      // OpenAI Models
+      {
+        name: "GPT-4 Turbo (Latest)",
+        provider: "openai",
+        modelId: "gpt-4-turbo-preview",
+        apiKeyEnvVar: "OPENAI_API_KEY",
+        description: "Latest GPT-4 Turbo model with improved performance",
+        isActive: true,
+      },
       {
         name: "GPT-4",
         provider: "openai",
@@ -121,13 +130,72 @@ export const seedModels = mutation({
         isActive: true,
       },
       {
-        name: "Claude 3 Sonnet",
-        provider: "anthropic",
-        modelId: "claude-3-sonnet",
-        apiKeyEnvVar: "ANTHROPIC_API_KEY",
-        description: "Balanced performance",
+        name: "GPT-3.5 Turbo",
+        provider: "openai",
+        modelId: "gpt-3.5-turbo",
+        apiKeyEnvVar: "OPENAI_API_KEY",
+        description: "Fast and efficient GPT-3.5 model",
         isActive: true,
       },
+      {
+        name: "GPT-3.5 Turbo 16K",
+        provider: "openai",
+        modelId: "gpt-3.5-turbo-16k",
+        apiKeyEnvVar: "OPENAI_API_KEY",
+        description: "GPT-3.5 Turbo with extended context window",
+        isActive: true,
+      },
+      // OpenAI o3 Models
+      {
+        name: "o3-mini",
+        provider: "openai",
+        modelId: "o3-mini",
+        apiKeyEnvVar: "OPENAI_API_KEY",
+        description: "OpenAI's o3-mini model - uses max_completion_tokens parameter",
+        isActive: true,
+      },
+      {
+        name: "o3-mini-preview",
+        provider: "openai",
+        modelId: "o3-mini-preview",
+        apiKeyEnvVar: "OPENAI_API_KEY",
+        description: "OpenAI's o3-mini-preview model - uses max_completion_tokens parameter",
+        isActive: true,
+      },
+      // Anthropic Models
+      {
+        name: "Claude 3 Opus",
+        provider: "anthropic",
+        modelId: "claude-3-opus-20240229",
+        apiKeyEnvVar: "ANTHROPIC_API_KEY",
+        description: "Anthropic's most capable model",
+        isActive: true,
+      },
+      {
+        name: "Claude 3 Sonnet",
+        provider: "anthropic",
+        modelId: "claude-3-sonnet-20240229",
+        apiKeyEnvVar: "ANTHROPIC_API_KEY",
+        description: "Balanced performance and speed",
+        isActive: true,
+      },
+      {
+        name: "Claude 3 Haiku",
+        provider: "anthropic",
+        modelId: "claude-3-haiku-20240307",
+        apiKeyEnvVar: "ANTHROPIC_API_KEY",
+        description: "Fastest and most compact Claude model",
+        isActive: true,
+      },
+      {
+        name: "Claude 2.1",
+        provider: "anthropic",
+        modelId: "claude-2.1",
+        apiKeyEnvVar: "ANTHROPIC_API_KEY",
+        description: "Previous generation Claude model",
+        isActive: true,
+      },
+      // Google Models
       {
         name: "Gemini Pro",
         provider: "google",
@@ -137,38 +205,288 @@ export const seedModels = mutation({
         isActive: true,
       },
       {
-        name: "Llama 2 7B",
-        provider: "huggingface",
-        modelId: "llama2",
-        apiKeyEnvVar: "HF_API_KEY",
-        description: "Meta's Llama 2 7B model",
+        name: "Gemini Pro Vision",
+        provider: "google",
+        modelId: "gemini-pro-vision",
+        apiKeyEnvVar: "GOOGLE_AI_API_KEY",
+        description: "Gemini Pro with vision capabilities",
         isActive: true,
       },
       {
-        name: "Mistral 7B",
-        provider: "huggingface",
-        modelId: "mistral",
-        apiKeyEnvVar: "HF_API_KEY",
-        description: "Mistral AI's 7B model",
+        name: "Gemini 1.5 Pro",
+        provider: "google",
+        modelId: "gemini-1.5-pro",
+        apiKeyEnvVar: "GOOGLE_AI_API_KEY",
+        description: "Latest Gemini 1.5 Pro model",
         isActive: true,
       },
       {
-        name: "Code Llama",
+        name: "Gemini 1.5 Pro Vision",
+        provider: "google",
+        modelId: "gemini-1.5-pro-vision",
+        apiKeyEnvVar: "GOOGLE_AI_API_KEY",
+        description: "Gemini 1.5 Pro with vision capabilities",
+        isActive: true,
+      },
+      // Hugging Face Models
+      {
+        name: "Mistral 7B Instruct",
         provider: "huggingface",
-        modelId: "codellama",
+        modelId: "mistralai/Mistral-7B-Instruct-v0.2",
         apiKeyEnvVar: "HF_API_KEY",
-        description: "Meta's Code Llama model",
+        description: "Mistral AI's 7B instruction-tuned model",
         isActive: true,
       },
       {
-        name: "Phi-2",
+        name: "Llama 2 70B Chat",
         provider: "huggingface",
-        modelId: "phi-2",
+        modelId: "meta-llama/Llama-2-70b-chat-hf",
         apiKeyEnvVar: "HF_API_KEY",
-        description: "Microsoft's Phi-2 model",
+        description: "Meta's large 70B Llama 2 chat model",
+        isActive: true,
+      },
+      {
+        name: "FLAN-T5 XXL",
+        provider: "huggingface",
+        modelId: "google/flan-t5-xxl",
+        apiKeyEnvVar: "HF_API_KEY",
+        description: "Google's large instruction-tuned T5 model",
+        isActive: true,
+      },
+      {
+        name: "BLOOM",
+        provider: "huggingface",
+        modelId: "bigscience/bloom",
+        apiKeyEnvVar: "HF_API_KEY",
+        description: "Large multilingual language model",
         isActive: true,
       }
     ];
+    for (const model of models) {
+      await ctx.db.insert("aiModels", {
+        ...model,
+        createdAt: Date.now(),
+        updatedAt: Date.now()
+      });
+    }
+  },
+});
+
+// Update existing models to match the correct model names
+export const updateModelNames = mutation({
+  args: {},
+  handler: async (ctx) => {
+    await requireAdmin(ctx);
+    
+    // Get all existing models
+    const existingModels = await ctx.db.query("aiModels").collect();
+    
+    // Define the correct model mappings
+    const modelUpdates = [
+      // OpenAI Models
+      { oldId: "gpt-4", newId: "gpt-4", newName: "GPT-4" },
+      { oldId: "gpt-3.5-turbo", newId: "gpt-3.5-turbo", newName: "GPT-3.5 Turbo" },
+      { oldId: "gpt-4-turbo", newId: "gpt-4-turbo-preview", newName: "GPT-4 Turbo (Latest)" },
+      { oldId: "gpt-3.5-turbo-16k", newId: "gpt-3.5-turbo-16k", newName: "GPT-3.5 Turbo 16K" },
+      
+      // Anthropic Models
+      { oldId: "claude-3-sonnet", newId: "claude-3-sonnet-20240229", newName: "Claude 3 Sonnet" },
+      { oldId: "claude-3-opus", newId: "claude-3-opus-20240229", newName: "Claude 3 Opus" },
+      { oldId: "claude-3-haiku", newId: "claude-3-haiku-20240307", newName: "Claude 3 Haiku" },
+      { oldId: "claude-2.1", newId: "claude-2.1", newName: "Claude 2.1" },
+      
+      // Google Models
+      { oldId: "gemini-pro", newId: "gemini-pro", newName: "Gemini Pro" },
+      { oldId: "gemini-pro-vision", newId: "gemini-pro-vision", newName: "Gemini Pro Vision" },
+      { oldId: "gemini-1.5-pro", newId: "gemini-1.5-pro", newName: "Gemini 1.5 Pro" },
+      { oldId: "gemini-1.5-pro-vision", newId: "gemini-1.5-pro-vision", newName: "Gemini 1.5 Pro Vision" },
+      
+      // Hugging Face Models
+      { oldId: "llama2", newId: "meta-llama/Llama-2-70b-chat-hf", newName: "Llama 2 70B Chat" },
+      { oldId: "mistral", newId: "mistralai/Mistral-7B-Instruct-v0.2", newName: "Mistral 7B Instruct" },
+      { oldId: "codellama", newId: "meta-llama/Llama-2-70b-chat-hf", newName: "Llama 2 70B Chat" },
+      { oldId: "phi-2", newId: "bigscience/bloom", newName: "BLOOM" },
+    ];
+    
+    // Update each existing model
+    for (const model of existingModels) {
+      const update = modelUpdates.find(u => u.oldId === model.modelId);
+      if (update) {
+        await ctx.db.patch(model._id, {
+          modelId: update.newId,
+          name: update.newName,
+          updatedAt: Date.now()
+        });
+      }
+    }
+  },
+});
+
+// Reset and reseed all models (admin only)
+export const resetAndReseedModels = mutation({
+  args: {},
+  handler: async (ctx) => {
+    await requireAdmin(ctx);
+    
+    // Delete all existing models
+    const existingModels = await ctx.db.query("aiModels").collect();
+    for (const model of existingModels) {
+      await ctx.db.delete(model._id);
+    }
+    
+    // Recreate models with the correct names
+    const models = [
+      // OpenAI Models
+      {
+        name: "GPT-4 Turbo (Latest)",
+        provider: "openai",
+        modelId: "gpt-4-turbo-preview",
+        apiKeyEnvVar: "OPENAI_API_KEY",
+        description: "Latest GPT-4 Turbo model with improved performance",
+        isActive: true,
+      },
+      {
+        name: "GPT-4",
+        provider: "openai",
+        modelId: "gpt-4",
+        apiKeyEnvVar: "OPENAI_API_KEY",
+        description: "Most capable GPT-4 model",
+        isActive: true,
+      },
+      {
+        name: "GPT-3.5 Turbo",
+        provider: "openai",
+        modelId: "gpt-3.5-turbo",
+        apiKeyEnvVar: "OPENAI_API_KEY",
+        description: "Fast and efficient GPT-3.5 model",
+        isActive: true,
+      },
+      {
+        name: "GPT-3.5 Turbo 16K",
+        provider: "openai",
+        modelId: "gpt-3.5-turbo-16k",
+        apiKeyEnvVar: "OPENAI_API_KEY",
+        description: "GPT-3.5 Turbo with extended context window",
+        isActive: true,
+      },
+      // OpenAI o3 Models
+      {
+        name: "o3-mini",
+        provider: "openai",
+        modelId: "o3-mini",
+        apiKeyEnvVar: "OPENAI_API_KEY",
+        description: "OpenAI's o3-mini model - uses max_completion_tokens parameter",
+        isActive: true,
+      },
+      {
+        name: "o3-mini-preview",
+        provider: "openai",
+        modelId: "o3-mini-preview",
+        apiKeyEnvVar: "OPENAI_API_KEY",
+        description: "OpenAI's o3-mini-preview model - uses max_completion_tokens parameter",
+        isActive: true,
+      },
+      // Anthropic Models
+      {
+        name: "Claude 3 Opus",
+        provider: "anthropic",
+        modelId: "claude-3-opus-20240229",
+        apiKeyEnvVar: "ANTHROPIC_API_KEY",
+        description: "Anthropic's most capable model",
+        isActive: true,
+      },
+      {
+        name: "Claude 3 Sonnet",
+        provider: "anthropic",
+        modelId: "claude-3-sonnet-20240229",
+        apiKeyEnvVar: "ANTHROPIC_API_KEY",
+        description: "Balanced performance and speed",
+        isActive: true,
+      },
+      {
+        name: "Claude 3 Haiku",
+        provider: "anthropic",
+        modelId: "claude-3-haiku-20240307",
+        apiKeyEnvVar: "ANTHROPIC_API_KEY",
+        description: "Fastest and most compact Claude model",
+        isActive: true,
+      },
+      {
+        name: "Claude 2.1",
+        provider: "anthropic",
+        modelId: "claude-2.1",
+        apiKeyEnvVar: "ANTHROPIC_API_KEY",
+        description: "Previous generation Claude model",
+        isActive: true,
+      },
+      // Google Models
+      {
+        name: "Gemini Pro",
+        provider: "google",
+        modelId: "gemini-pro",
+        apiKeyEnvVar: "GOOGLE_AI_API_KEY",
+        description: "Google's most capable text generation model",
+        isActive: true,
+      },
+      {
+        name: "Gemini Pro Vision",
+        provider: "google",
+        modelId: "gemini-pro-vision",
+        apiKeyEnvVar: "GOOGLE_AI_API_KEY",
+        description: "Gemini Pro with vision capabilities",
+        isActive: true,
+      },
+      {
+        name: "Gemini 1.5 Pro",
+        provider: "google",
+        modelId: "gemini-1.5-pro",
+        apiKeyEnvVar: "GOOGLE_AI_API_KEY",
+        description: "Latest Gemini 1.5 Pro model",
+        isActive: true,
+      },
+      {
+        name: "Gemini 1.5 Pro Vision",
+        provider: "google",
+        modelId: "gemini-1.5-pro-vision",
+        apiKeyEnvVar: "GOOGLE_AI_API_KEY",
+        description: "Gemini 1.5 Pro with vision capabilities",
+        isActive: true,
+      },
+      // Hugging Face Models
+      {
+        name: "Mistral 7B Instruct",
+        provider: "huggingface",
+        modelId: "mistralai/Mistral-7B-Instruct-v0.2",
+        apiKeyEnvVar: "HF_API_KEY",
+        description: "Mistral AI's 7B instruction-tuned model",
+        isActive: true,
+      },
+      {
+        name: "Llama 2 70B Chat",
+        provider: "huggingface",
+        modelId: "meta-llama/Llama-2-70b-chat-hf",
+        apiKeyEnvVar: "HF_API_KEY",
+        description: "Meta's large 70B Llama 2 chat model",
+        isActive: true,
+      },
+      {
+        name: "FLAN-T5 XXL",
+        provider: "huggingface",
+        modelId: "google/flan-t5-xxl",
+        apiKeyEnvVar: "HF_API_KEY",
+        description: "Google's large instruction-tuned T5 model",
+        isActive: true,
+      },
+      {
+        name: "BLOOM",
+        provider: "huggingface",
+        modelId: "bigscience/bloom",
+        apiKeyEnvVar: "HF_API_KEY",
+        description: "Large multilingual language model",
+        isActive: true,
+      }
+    ];
+    
     for (const model of models) {
       await ctx.db.insert("aiModels", {
         ...model,

@@ -35,7 +35,7 @@ const applicationTables = {
   chats: defineTable({
     userId: v.string(), // Clerk user ID (string instead of Convex ID)
     title: v.string(),
-    modelId: v.id("aiModels"),
+    modelId: v.string(), // Changed from v.id("aiModels") to v.string() for dynamic model IDs
     isArchived: v.optional(v.boolean()),
     createdAt: v.number(), // Track when chat was created
     updatedAt: v.number(), // Track when chat was last updated

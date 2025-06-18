@@ -7,11 +7,18 @@ import { ConvexError } from "convex/values";
  * This function should be used in queries and mutations to get the authenticated user
  */
 export const getCurrentUserId = async (ctx: any): Promise<string> => {
-  const identity = await ctx.auth.getUserIdentity();
-  if (!identity) {
+  try {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      console.error("Authentication failed: No user identity found");
+      throw new ConvexError("Not authenticated");
+    }
+    console.log("User authenticated successfully:", identity.subject);
+    return identity.subject;
+  } catch (error) {
+    console.error("Authentication error:", error);
     throw new ConvexError("Not authenticated");
   }
-  return identity.subject;
 };
 
 /**

@@ -14,18 +14,7 @@ export const list = query({
       .order("desc")
       .collect();
     
-    // Get model info for each chat
-    const chatsWithModels = await Promise.all(
-      chats.map(async (chat) => {
-        const model = await ctx.db.get(chat.modelId);
-        return {
-          ...chat,
-          model,
-        };
-      })
-    );
-    
-    return chatsWithModels;
+    return chats;
   },
 });
 
@@ -40,11 +29,7 @@ export const get = query({
       return null;
     }
     
-    const model = await ctx.db.get(chat.modelId);
-    return {
-      ...chat,
-      model,
-    };
+    return chat;
   },
 });
 
@@ -52,7 +37,7 @@ export const get = query({
 export const create = mutation({
   args: {
     title: v.string(),
-    modelId: v.id("aiModels"),
+    modelId: v.string(),
   },
   handler: async (ctx, args) => {
     const userId = await getCurrentUserId(ctx);
