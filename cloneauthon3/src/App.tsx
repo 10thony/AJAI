@@ -7,6 +7,7 @@ import { Layout } from "./components/Layout";
 import { ChatPage } from "./pages/ChatPage";
 import { AdminPage } from "./pages/AdminPage";
 import { HomePage } from "./pages/HomePage";
+import { ThemeConfigPage } from "./pages/ThemeConfigPage";
 import TempChatPage from "./pages/TempChatPage";
 import { useAuth } from "@clerk/clerk-react";
 import { ThemeProvider } from "./lib/ThemeContext";
@@ -61,6 +62,7 @@ function AuthenticatedApp() {
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/chat/:chatId" element={<ChatPage />} />
+        <Route path="/theme-config" element={<ThemeConfigPage />} />
         {userRole === "admin" && (
           <Route path="/admin" element={<AdminPage />} />
         )}

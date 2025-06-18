@@ -3,6 +3,7 @@ import { Link, useParams, useNavigate } from "react-router-dom";
 import { api } from "../../convex/_generated/api";
 import { useState } from "react";
 import { Id } from "../../convex/_generated/dataModel";
+import { useCustomTheme } from "../lib/useCustomTheme";
 
 export function Sidebar() {
   const chats = useQuery(api.chats.list) || [];
@@ -11,6 +12,8 @@ export function Sidebar() {
   const archiveChat = useMutation(api.chats.archive);
   const { chatId } = useParams();
   const navigate = useNavigate();
+  const { getSidebarTheme } = useCustomTheme();
+  const sidebarTheme = getSidebarTheme();
   
   const [isCreating, setIsCreating] = useState(false);
   const [deletingChatId, setDeletingChatId] = useState<Id<"chats"> | null>(null);
@@ -55,14 +58,14 @@ export function Sidebar() {
   return (
     <div className={`relative flex flex-col transition-all duration-300 ease-in-out ${
       isCollapsed ? 'w-16' : 'w-64'
-    } bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700`}>
+    } ${sidebarTheme.background} border-r ${sidebarTheme.border}`}>
       {/* Hamburger Button */}
       <button
         onClick={() => setIsCollapsed(!isCollapsed)}
-        className="absolute -right-3 top-4 z-10 bg-white dark:bg-gray-800 rounded-full p-1 border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700"
+        className={`absolute -right-3 top-4 z-10 ${sidebarTheme.background} rounded-full p-1 border ${sidebarTheme.border} ${sidebarTheme.hover}`}
       >
         <svg
-          className={`w-4 h-4 text-gray-600 dark:text-gray-300 transition-transform duration-300 ${
+          className={`w-4 h-4 ${sidebarTheme.text} transition-transform duration-300 ${
             isCollapsed ? 'rotate-180' : ''
           }`}
           fill="none"
@@ -79,7 +82,7 @@ export function Sidebar() {
       </button>
 
       {/* New Chat Button */}
-      <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+      <div className={`p-4 border-b ${sidebarTheme.border}`}>
         <button
           onClick={handleNewChat}
           disabled={isCreating || aiModels.length === 0}
@@ -101,7 +104,7 @@ export function Sidebar() {
       <div className="flex-1 overflow-y-auto">
         <div className="p-4">
           {!isCollapsed && (
-            <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-3">Recent Chats</h3>
+            <h3 className={`text-sm font-medium ${sidebarTheme.textSecondary} mb-3`}>Recent Chats</h3>
           )}
           <div className="space-y-2">
             {chats.map((chat) => (
@@ -110,8 +113,8 @@ export function Sidebar() {
                 to={`/chat/${chat._id}`}
                 className={`block p-3 rounded-md text-sm group relative ${
                   chatId === chat._id
-                    ? "bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300"
-                    : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                    ? sidebarTheme.active
+                    : `${sidebarTheme.text} ${sidebarTheme.hover}`
                 }`}
               >
                 {isCollapsed ? (
@@ -123,8 +126,8 @@ export function Sidebar() {
                 ) : (
                   <>
                     <div className="font-medium truncate">{chat.title}</div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                      {chat.model?.name || "Unknown Model"}
+                    <div className={`text-xs ${sidebarTheme.textSecondary} mt-1`}>
+                      {chat.modelId || "Unknown Model"}
                     </div>
                     <button
                       onClick={(e) => handleDeleteChat(chat._id, e)}
@@ -138,7 +141,7 @@ export function Sidebar() {
               </Link>
             ))}
             {chats.length === 0 && !isCollapsed && (
-              <p className="text-gray-500 dark:text-gray-400 text-sm">No chats yet</p>
+              <p className={`${sidebarTheme.textSecondary} text-sm`}>No chats yet</p>
             )}
           </div>
         </div>
@@ -146,16 +149,16 @@ export function Sidebar() {
 
       {/* Model Info */}
       {!isCollapsed && (
-        <div className="p-4 border-t border-gray-200 dark:border-gray-700">
-          <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">Available Models</h3>
+        <div className={`p-4 border-t ${sidebarTheme.border}`}>
+          <h3 className={`text-sm font-medium ${sidebarTheme.textSecondary} mb-2`}>Available Models</h3>
           <div className="space-y-1">
             {aiModels.map((model) => (
-              <div key={model._id} className="text-xs text-gray-600 dark:text-gray-300">
+              <div key={model._id} className={`text-xs ${sidebarTheme.text}`}>
                 {model.name}
               </div>
             ))}
             {aiModels.length === 0 && (
-              <p className="text-xs text-gray-500 dark:text-gray-400">No models configured</p>
+              <p className={`text-xs ${sidebarTheme.textSecondary}`}>No models configured</p>
             )}
           </div>
         </div>

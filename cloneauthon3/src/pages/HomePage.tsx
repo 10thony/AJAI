@@ -26,7 +26,7 @@ export function HomePage() {
   };
 
   return (
-    <div className="flex-1 flex items-center justify-center p-8">
+    <div className="min-h-full flex flex-col items-center justify-start py-8">
       <div className="max-w-2xl mx-auto text-center">
         <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
           Welcome to AJ.Chat
@@ -59,7 +59,7 @@ export function HomePage() {
                   >
                     <div className="font-medium text-sm text-gray-900 dark:text-white">{chat.title}</div>
                     <div className="text-xs text-gray-500 dark:text-gray-400">
-                      {chat.model?.name}
+                      {chat.modelId}
                     </div>
                   </Link>
                 ))}

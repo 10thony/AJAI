@@ -4,6 +4,7 @@ import { api } from "../../convex/_generated/api";
 import { SignOutButton } from "../SignOutButton";
 import { Sidebar } from "./Sidebar";
 import { DarkModeToggle } from "./DarkModeToggle";
+import { Palette } from "lucide-react";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -39,6 +40,17 @@ export function Layout({ children }: LayoutProps) {
               )}
             </div>
             <div className="flex items-center space-x-4">
+              <Link
+                to="/theme-config"
+                className={`p-2 rounded-md text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white transition-colors ${
+                  location.pathname === "/theme-config"
+                    ? "bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300"
+                    : ""
+                }`}
+                aria-label="Theme Configuration"
+              >
+                <Palette className="w-5 h-5" />
+              </Link>
               <DarkModeToggle />
               <SignOutButton />
             </div>
@@ -46,7 +58,7 @@ export function Layout({ children }: LayoutProps) {
         </header>
 
         {/* Main content */}
-        <main className="flex-1 overflow-hidden bg-gray-50 dark:bg-gray-900">
+        <main className="flex-1 overflow-auto bg-gray-50 dark:bg-gray-900">
           {children}
         </main>
       </div>
