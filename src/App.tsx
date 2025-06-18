@@ -77,7 +77,7 @@ function UnauthenticatedApp() {
     <div className="min-h-screen flex items-center justify-center p-8">
       <div className="w-full max-w-md mx-auto">
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">T3.Chat</h1>
+          <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">AJAI</h1>
           <p className="text-xl text-gray-600 dark:text-gray-300">Sign in to start chatting with AI</p>
         </div>
         <SignInForm />
