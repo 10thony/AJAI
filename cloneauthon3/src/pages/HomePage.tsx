@@ -6,7 +6,7 @@ import { useState } from "react";
 export function HomePage() {
   const chats = useQuery(api.chats.list) || [];
   const aiModels = useQuery(api.aiModels.listActive) || [];
-  const loggedInUser = useQuery(api.auth.loggedInUser);
+  const loggedInUser = useQuery(api.auth.getCurrentUser);
   const userRole = useQuery(api.userRoles.getCurrentUserRole);
   
   const makeAdmin = useMutation(api.userRoles.makeCurrentUserAdmin);
